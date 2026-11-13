@@ -1,0 +1,6 @@
+{
+  "name": "FinTrace",
+  "description": "AI-powered predictive cybercrime investigation platform for tracing multi-hop fraud flows, detecting mule networks, and forecasting likely ATM cash-out locations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Build Outputs
+dist/
+build/
+coverage/
+.pytest_cache/
+
+# ML Artifacts (trained binaries)
+ml-service/artifacts/*.joblib
+ml-service/artifacts/*.json
+
+# Logs & OS files
+logs/
+*.log
+.DS_Store
+Thumbs.db
