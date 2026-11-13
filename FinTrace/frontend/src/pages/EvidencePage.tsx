@@ -140,7 +140,7 @@ export function EvidencePage() {
           <button
             type="button"
             onClick={() => void loadData()}
-            className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             Refresh Vault
@@ -149,7 +149,7 @@ export function EvidencePage() {
             type="button"
             disabled={investigations.length === 0}
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             Log Evidence Artifact
@@ -160,20 +160,20 @@ export function EvidencePage() {
       {error ? <ErrorDataState message={error} onRetry={() => void loadData()} /> : null}
 
       {notice ? (
-        <div className="flex items-center gap-2 rounded-[6px] border border-emerald-700/50 bg-emerald-950/30 px-4 py-2.5 text-xs font-mono text-emerald-200">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden="true" />
+        <div className="flex items-center gap-2 rounded-[6px] border border-emerald-300 bg-[#D8F8EC] px-4 py-2.5 text-xs font-mono text-[#065F46] dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="break-all">{notice}</span>
         </div>
       ) : null}
 
       {/* Filters */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] p-3.5">
+      <section className="rounded-[6px] border border-border-subtle bg-card p-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <select
             value={investigationFilter}
             onChange={(e) => setInvestigationFilter(e.target.value)}
             aria-label="Filter evidence by investigation"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100"
+            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
           >
             <option value="">All Investigation Cases</option>
             {investigations.map((inv) => (
@@ -187,7 +187,7 @@ export function EvidencePage() {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as EvidenceType | '')}
             aria-label="Filter evidence by type"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100"
+            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
           >
             <option value="">All Evidence Types</option>
             <option value="BANK_STATEMENT_CSV">BANK_STATEMENT_CSV</option>
@@ -201,13 +201,13 @@ export function EvidencePage() {
       </section>
 
       {/* Records Table */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-        <div className="border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+        <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileLock2 className="h-4 w-4 text-sky-400" aria-hidden="true" />
-            <h2 className="text-sm font-semibold text-white">Chain-of-Custody Evidence Records</h2>
+            <FileLock2 className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-heading">Chain-of-Custody Evidence Records</h2>
           </div>
-          <span className="font-mono text-xs text-slate-400 tabular-nums">
+          <span className="font-mono text-xs text-muted tabular-nums">
             {records.length} artifacts
           </span>
         </div>
@@ -222,7 +222,7 @@ export function EvidencePage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 bg-[#0F172A] text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-border-subtle bg-highlight text-[11px] font-semibold uppercase tracking-wider text-heading">
                 <tr>
                   <th className="px-4 py-2.5">Case & Type</th>
                   <th className="px-4 py-2.5">Title & Custody Notes</th>
@@ -231,28 +231,28 @@ export function EvidencePage() {
                   <th className="px-4 py-2.5 text-right">Integrity</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-border-subtle">
                 {records.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-slate-800/35">
+                  <tr key={rec.id} className="hover:bg-subtle">
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      <p className="font-mono font-semibold text-sky-300">{rec.case_number}</p>
-                      <p className="font-mono text-[11px] text-slate-400">{rec.evidence_type}</p>
+                      <p className="font-mono font-semibold text-accent-strong">{rec.case_number}</p>
+                      <p className="font-mono text-[11px] text-muted">{rec.evidence_type}</p>
                     </td>
                     <td className="px-4 py-2.5 max-w-md">
-                      <p className="font-semibold text-white">{rec.title}</p>
-                      <p className="text-[11px] text-slate-400 line-clamp-2">{rec.description}</p>
+                      <p className="font-semibold text-heading">{rec.title}</p>
+                      <p className="text-[11px] text-muted line-clamp-2">{rec.description}</p>
                       {rec.file_name ? (
-                        <p className="font-mono text-[10px] text-slate-500 mt-0.5">
+                        <p className="font-mono text-[10px] text-muted mt-0.5">
                           File: {rec.file_name}
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px] text-emerald-300 max-w-[200px] truncate">
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-[#065F46] dark:text-emerald-300 max-w-[200px] truncate">
                       {rec.sha256_hash ?? '—'}
                     </td>
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      <p className="text-slate-200">{rec.uploaded_by_name}</p>
-                      <p className="font-mono text-[11px] text-slate-400 tabular-nums">
+                      <p className="text-heading">{rec.uploaded_by_name}</p>
+                      <p className="font-mono text-[11px] text-muted tabular-nums">
                         {formatTimestamp(rec.recorded_at)}
                       </p>
                     </td>
@@ -265,9 +265,9 @@ export function EvidencePage() {
                           setVerifyMode('hash');
                           setVerifyResult(null);
                         }}
-                        className="inline-flex items-center gap-1 rounded-[4px] border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-200 hover:bg-slate-800 cursor-pointer"
+                        className="inline-flex items-center gap-1 rounded-[4px] border border-border-subtle bg-subtle px-2.5 py-1 text-[11px] font-medium text-heading hover:bg-highlight cursor-pointer"
                       >
-                        <ShieldCheck className="h-3 w-3 text-sky-400" aria-hidden="true" />
+                        <ShieldCheck className="h-3 w-3 text-accent-strong" aria-hidden="true" />
                         Verify Hash
                       </button>
                     </td>
@@ -281,14 +281,14 @@ export function EvidencePage() {
 
       {/* Log Evidence Modal */}
       {showAddModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-[6px] border border-slate-700 bg-[#111827] p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-sm font-semibold text-white">Log Chain-of-Custody Evidence</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-[6px] border border-border-subtle bg-card p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <h2 className="text-sm font-semibold text-heading">Log Chain-of-Custody Evidence</h2>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                className="text-xs text-muted hover:text-heading cursor-pointer"
               >
                 Close
               </button>
@@ -296,12 +296,12 @@ export function EvidencePage() {
             <form onSubmit={(e) => void handleAddEvidence(e)} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1">Investigation</label>
+                  <label className="block text-muted mb-1">Investigation</label>
                   <select
                     required
                     value={formInvId}
                     onChange={(e) => setFormInvId(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                   >
                     {investigations.map((inv) => (
                       <option key={inv.id} value={inv.id}>
@@ -311,11 +311,11 @@ export function EvidencePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">Evidence Type</label>
+                  <label className="block text-muted mb-1">Evidence Type</label>
                   <select
                     value={formType}
                     onChange={(e) => setFormType(e.target.value as EvidenceType)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                   >
                     <option value="BANK_STATEMENT_CSV">BANK_STATEMENT_CSV</option>
                     <option value="CDR_EXTRACT">CDR_EXTRACT</option>
@@ -328,7 +328,7 @@ export function EvidencePage() {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Title</label>
+                <label className="block text-muted mb-1">Title</label>
                 <input
                   type="text"
                   required
@@ -336,35 +336,35 @@ export function EvidencePage() {
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="NPCI IMPS Settlement Trail Extract — Layer 1-3"
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Artifact Filename (optional)</label>
+                <label className="block text-muted mb-1">Artifact Filename (optional)</label>
                 <input
                   type="text"
                   value={formFileName}
                   onChange={(e) => setFormFileName(e.target.value)}
                   placeholder="npci_utr_extract_2026.csv"
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 font-mono text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 font-mono text-heading"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Description / Custody Provenance</label>
+                <label className="block text-muted mb-1">Description / Custody Provenance</label>
                 <textarea
                   required
                   minLength={8}
                   rows={2}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">
+                <label className="block text-muted mb-1">
                   Raw Payload / Reference Text to Hash (SHA-256 computed server-side)
                 </label>
                 <textarea
@@ -372,7 +372,7 @@ export function EvidencePage() {
                   value={formPayload}
                   onChange={(e) => setFormPayload(e.target.value)}
                   placeholder="Optional UTR list or statement excerpt to digest..."
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 font-mono text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 font-mono text-heading"
                 />
               </div>
 
@@ -380,14 +380,14 @@ export function EvidencePage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="rounded-[5px] border border-slate-700 px-3 py-1.5 text-slate-300 cursor-pointer"
+                  className="rounded-[5px] border border-border-subtle px-3 py-1.5 text-body hover:bg-highlight cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-[5px] bg-sky-600 px-3.5 py-1.5 font-semibold text-white hover:bg-sky-500 cursor-pointer"
+                  className="rounded-[5px] bg-accent-strong px-3.5 py-1.5 font-semibold text-white hover:bg-accent-strong-hover cursor-pointer"
                 >
                   {submitting ? 'Hashing & Storing...' : 'Record Evidence'}
                 </button>
@@ -399,31 +399,32 @@ export function EvidencePage() {
 
       {/* Verify Hash Modal */}
       {verifyingRecord ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-[6px] border border-slate-700 bg-[#111827] p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-sm font-semibold text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-[6px] border border-border-subtle bg-card p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <h2 className="text-sm font-semibold text-heading">
                 Verify SHA-256 Integrity — {verifyingRecord.title}
               </h2>
               <button
                 type="button"
                 onClick={() => setVerifyingRecord(null)}
-                className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                className="text-xs text-muted hover:text-heading cursor-pointer"
               >
                 Close
               </button>
             </div>
             <form onSubmit={(e) => void handleVerifyHash(e)} className="space-y-3 text-xs">
               <div className="flex gap-4">
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-200">
+                <label className="flex items-center gap-1.5 cursor-pointer text-heading">
                   <input
                     type="radio"
                     checked={verifyMode === 'hash'}
                     onChange={() => setVerifyMode('hash')}
+                    className="accent-accent-strong"
                   />
                   Compare SHA-256 Hex
                 </label>
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-200">
+                <label className="flex items-center gap-1.5 cursor-pointer text-heading">
                   <input
                     type="radio"
                     checked={verifyMode === 'payload'}
@@ -431,6 +432,7 @@ export function EvidencePage() {
                       setVerifyMode('payload');
                       setVerifyInput('');
                     }}
+                    className="accent-accent-strong"
                   />
                   Hash Raw Payload Text
                 </label>
@@ -445,20 +447,20 @@ export function EvidencePage() {
                     ? '64-char SHA-256 hex digest...'
                     : 'Paste exact raw artifact text to compute SHA-256...'
                 }
-                className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 font-mono text-slate-100"
+                className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 font-mono text-heading"
               />
               {verifyResult ? (
                 <div
                   className={`rounded-[5px] border px-3 py-2 font-mono text-[11px] flex items-start gap-2 ${
                     verifyResult.matched
-                      ? 'border-emerald-700/60 bg-emerald-950/30 text-emerald-200'
-                      : 'border-red-700/60 bg-red-950/30 text-red-200'
+                      ? 'border-emerald-300 bg-[#D8F8EC] text-[#065F46] dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-200'
+                      : 'border-red-300 bg-[#FEE2E2] text-[#991B1B] dark:border-red-700/60 dark:bg-red-950/30 dark:text-red-200'
                   }`}
                 >
                   {verifyResult.matched ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
                   ) : (
-                    <XCircle className="h-4 w-4 text-red-400 shrink-0" />
+                    <XCircle className="h-4 w-4 shrink-0" />
                   )}
                   <div className="break-all">
                     <p className="font-semibold">
@@ -466,8 +468,8 @@ export function EvidencePage() {
                         ? 'CHECKSUM MATCHED — Integrity verified'
                         : 'CHECKSUM MISMATCH — Digest does not match stored record'}
                     </p>
-                    <p className="mt-0.5 text-slate-300">Stored: {verifyResult.storedHash}</p>
-                    <p className="text-slate-300">Checked: {verifyResult.candidateHash}</p>
+                    <p className="mt-0.5 opacity-90">Stored: {verifyResult.storedHash}</p>
+                    <p className="opacity-90">Checked: {verifyResult.candidateHash}</p>
                   </div>
                 </div>
               ) : null}
@@ -475,13 +477,13 @@ export function EvidencePage() {
                 <button
                   type="button"
                   onClick={() => setVerifyingRecord(null)}
-                  className="rounded-[5px] border border-slate-700 px-3 py-1.5 text-slate-300 cursor-pointer"
+                  className="rounded-[5px] border border-border-subtle px-3 py-1.5 text-body hover:bg-highlight cursor-pointer"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="rounded-[5px] bg-sky-600 px-3.5 py-1.5 font-semibold text-white hover:bg-sky-500 cursor-pointer"
+                  className="rounded-[5px] bg-accent-strong px-3.5 py-1.5 font-semibold text-white hover:bg-accent-strong-hover cursor-pointer"
                 >
                   Run Verification
                 </button>

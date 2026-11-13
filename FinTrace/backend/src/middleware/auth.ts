@@ -7,7 +7,8 @@ export type UserRole =
   | 'Administrator'
   | 'Senior Investigator'
   | 'Investigator'
-  | 'Bank Nodal Officer';
+  | 'Bank Nodal Officer'
+  | 'citizen';
 
 export interface AuthUserPayload {
   userId: string;

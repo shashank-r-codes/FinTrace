@@ -15,9 +15,16 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
+export type CitizenStatus =
+  | 'Submitted'
+  | 'Under Review'
+  | 'Assigned to Investigator'
+  | 'Investigation in Progress'
+  | 'Action Taken / Closed';
+
 export interface RoleSeed {
   id: number;
-  name: 'Administrator' | 'Senior Investigator' | 'Investigator' | 'Bank Nodal Officer';
+  name: 'Administrator' | 'Senior Investigator' | 'Investigator' | 'Bank Nodal Officer' | 'citizen';
   description: string;
   permissions: string[];
 }
@@ -38,6 +45,8 @@ export interface UserSeed {
   full_name: string;
   role_name: RoleSeed['name'];
   institution_id: string | null;
+  victim_id?: string | null;
+  phone_masked?: string | null;
   investigator?: {
     id: string;
     badge_number: string;
@@ -91,7 +100,9 @@ export interface AtmSeed {
 export interface ComplaintSeed {
   id: string;
   complaint_number: string;
+  reference_no: string;
   victim_id: string;
+  filed_by_user_id: string | null;
   assigned_to: string | null;
   fraud_type:
     | 'UPI_PHISHING'
@@ -105,9 +116,35 @@ export interface ComplaintSeed {
   incident_timestamp: Date;
   reported_at: Date;
   status: 'REGISTERED' | 'TRACING' | 'MULE_IDENTIFIED' | 'ATM_ALERTED' | 'CONTAINED' | 'CLOSED';
+  citizen_status: CitizenStatus;
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   summary: string;
   city: string;
+  victim_bank_name?: string | null;
+  victim_account_masked?: string | null;
+}
+
+export interface ComplaintStatusHistorySeed {
+  id: string;
+  complaint_id: string;
+  status: ComplaintSeed['status'];
+  citizen_status: CitizenStatus;
+  public_remark: string | null;
+  internal_note: string | null;
+  changed_by: string | null;
+  changed_at: Date;
+}
+
+export interface CitizenNotificationSeed {
+  id: string;
+  user_id: string;
+  complaint_id: string;
+  reference_no: string;
+  title: string;
+  message: string;
+  citizen_status: CitizenStatus;
+  is_read: boolean;
+  created_at: Date;
 }
 
 export interface TransactionSeed {
@@ -228,6 +265,8 @@ export interface SyntheticDataset {
   alerts: AlertSeed[];
   investigations: InvestigationSeed[];
   evidenceRecords: EvidenceSeed[];
+  complaintStatusHistory: ComplaintStatusHistorySeed[];
+  citizenNotifications: CitizenNotificationSeed[];
 }
 
 function deterministicUuid(namespace: string): string {
@@ -322,6 +361,17 @@ export function generateSyntheticDataset(): SyntheticDataset {
         'evidence:read',
         'evidence:create',
         'reports:export',
+      ],
+    },
+    {
+      id: 5,
+      name: 'citizen',
+      description: 'Complainant / Citizen portal user: file cybercrime complaints, upload evidence, and track sanitized status updates.',
+      permissions: [
+        'citizen:complaints:create',
+        'citizen:complaints:read',
+        'citizen:evidence:upload',
+        'citizen:notifications:read',
       ],
     },
   ];
@@ -438,6 +488,26 @@ export function generateSyntheticDataset(): SyntheticDataset {
       role_name: 'Bank Nodal Officer',
       institution_id: institutions[0].id,
     },
+    {
+      id: deterministicUuid('user-citizen-1'),
+      email: 'citizen1@fintrace.demo',
+      password_hash: demoPasswordHash,
+      full_name: 'Aarav Deshpande',
+      role_name: 'citizen',
+      institution_id: null,
+      victim_id: deterministicUuid('victim-citizen-1'),
+      phone_masked: '+91-98XXX-XX701',
+    },
+    {
+      id: deterministicUuid('user-citizen-2'),
+      email: 'citizen2@fintrace.demo',
+      password_hash: demoPasswordHash,
+      full_name: 'Kavitha Nair',
+      role_name: 'citizen',
+      institution_id: null,
+      victim_id: deterministicUuid('victim-citizen-2'),
+      phone_masked: '+91-97XXX-XX802',
+    },
   ];
 
   // 4. Bengaluru Synthetic ATMs (18 realistic coordinates across key corridors)
@@ -527,6 +597,26 @@ export function generateSyntheticDataset(): SyntheticDataset {
       home_lat: 12.9810,
       home_lng: 77.6420,
     },
+    {
+      id: deterministicUuid('victim-citizen-1'),
+      full_name: 'Aarav Deshpande',
+      phone_masked: '+91-98XXX-XX701',
+      email: 'citizen1@fintrace.demo',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      home_lat: 12.9279,
+      home_lng: 77.6271,
+    },
+    {
+      id: deterministicUuid('victim-citizen-2'),
+      full_name: 'Kavitha Nair',
+      phone_masked: '+91-97XXX-XX802',
+      email: 'citizen2@fintrace.demo',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      home_lat: 12.9719,
+      home_lng: 77.6412,
+    },
   ];
 
   // 6. Bank Accounts (40 accounts: 4 victims, 16 normal citizens/merchants, 20 mule/layering/cashout nodes)
@@ -578,6 +668,10 @@ export function generateSyntheticDataset(): SyntheticDataset {
   const vAcc2 = makeAccount('acc-v2', 'SYN100000102', 'Vikramaditya Joshi', 'SAVINGS', 1, 1, 1450);
   const vAcc3 = makeAccount('acc-v3', 'SYN100000103', 'Prashanth Hegde', 'SAVINGS', 0, 0, 980);
   const vAcc4 = makeAccount('acc-v4', 'SYN100000104', 'Ananya Chatterjee', 'SAVINGS', 2, 1, 1120);
+  const vAccCit1 = makeAccount('acc-vcit1', 'SYN100000701', 'Aarav Deshpande', 'SAVINGS', 0, 0, 1250);
+  const vAccCit2 = makeAccount('acc-vcit2', 'SYN100000802', 'Kavitha Nair', 'SAVINGS', 1, 1, 890);
+  const citBen1 = makeAccount('acc-cit-ben1', 'SYN600001701', 'QuickPay Merchant Shell', 'MERCHANT', 3, 2, 19, false);
+  const citBen2 = makeAccount('acc-cit-ben2', 'SYN600001802', 'Apex Wealth Advisory Hub', 'CURRENT', 1, 5, 24, false);
 
   // Scenario 2 accounts (Multi-account layering + cycle)
   const s2Hop1A = makeAccount('acc-s2-h1a', 'SYN200001001', 'Kiran Enterprises (Shell)', 'CURRENT', 1, 2, 42, false);
@@ -647,62 +741,122 @@ export function generateSyntheticDataset(): SyntheticDataset {
     {
       id: deterministicUuid('cmp-2026-0001'),
       complaint_number: 'CMP-2026-0001',
+      reference_no: 'FT-2026-000001',
       victim_id: victims[0].id,
+      filed_by_user_id: null,
       assigned_to: invKavyaId,
       fraud_type: 'DIGITAL_ARREST',
       reported_amount: 1450000,
       incident_timestamp: hoursAgo(18),
       reported_at: hoursAgo(16),
       status: 'MULE_IDENTIFIED',
+      citizen_status: 'Investigation in Progress',
       priority: 'CRITICAL',
       summary:
         'Victim coerced via fake enforcement video call into transferring INR 14.50L; funds split into 3 shell accounts and layered across 3 hops with a cyclic bounce.',
       city: 'Bengaluru',
+      victim_bank_name: institutions[0].name,
+      victim_account_masked: 'XXXXXX0101',
     },
     {
       id: deterministicUuid('cmp-2026-0002'),
       complaint_number: 'CMP-2026-0002',
+      reference_no: 'FT-2026-000002',
       victim_id: victims[1].id,
+      filed_by_user_id: null,
       assigned_to: invRohanId,
       fraud_type: 'UPI_PHISHING',
       reported_amount: 620000,
       incident_timestamp: hoursAgo(10),
       reported_at: hoursAgo(9),
       status: 'TRACING',
+      citizen_status: 'Under Review',
       priority: 'HIGH',
       summary:
         'Victim clicked spoofed utility KYC link; INR 6.20L routed into central mule account SYNMULE00100 alongside second compromised merchant inflow and dispersed within 15 minutes.',
       city: 'Bengaluru',
+      victim_bank_name: institutions[1].name,
+      victim_account_masked: 'XXXXXX0102',
     },
     {
       id: deterministicUuid('cmp-2026-0003'),
       complaint_number: 'CMP-2026-0003',
+      reference_no: 'FT-2026-000003',
       victim_id: victims[2].id,
+      filed_by_user_id: null,
       assigned_to: invRohanId,
       fraud_type: 'INVESTMENT_SCAM',
       reported_amount: 980000,
       incident_timestamp: hoursAgo(26),
       reported_at: hoursAgo(22),
       status: 'CONTAINED',
+      citizen_status: 'Action Taken / Closed',
       priority: 'HIGH',
       summary:
         'Fake institutional trading portal fraud of INR 9.80L; funds layered to cash-out mule Imran Pasha followed by structured ATM withdrawals in Koramangala/Silk Board prior to freeze.',
       city: 'Bengaluru',
+      victim_bank_name: institutions[0].name,
+      victim_account_masked: 'XXXXXX0103',
     },
     {
       id: deterministicUuid('cmp-2026-0004'),
       complaint_number: 'CMP-2026-0004',
+      reference_no: 'FT-2026-000004',
       victim_id: victims[3].id,
+      filed_by_user_id: null,
       assigned_to: invMeeraId,
       fraud_type: 'OTP_HIJACK',
       reported_amount: 475000,
       incident_timestamp: hoursAgo(2.5),
       reported_at: hoursAgo(1.5),
       status: 'ATM_ALERTED',
+      citizen_status: 'Investigation in Progress',
       priority: 'CRITICAL',
       summary:
         'SIM-swap OTP hijack of INR 4.75L; funds arrived at 3 candidate cash-out accounts clustered near Indiranagar, MG Road, and Whitefield. No ATM withdrawal observed yet (imminent window).',
       city: 'Bengaluru',
+      victim_bank_name: institutions[2].name,
+      victim_account_masked: 'XXXXXX0104',
+    },
+    {
+      id: deterministicUuid('cmp-2026-0005'),
+      complaint_number: 'CMP-2026-0005',
+      reference_no: 'FT-2026-000101',
+      victim_id: victims[4].id,
+      filed_by_user_id: users[5].id,
+      assigned_to: null,
+      fraud_type: 'UPI_PHISHING',
+      reported_amount: 85000,
+      incident_timestamp: hoursAgo(7),
+      reported_at: hoursAgo(6),
+      status: 'TRACING',
+      citizen_status: 'Under Review',
+      priority: 'HIGH',
+      summary:
+        'Citizen reported unauthorized UPI collect approval for INR 85,000 after receiving fake courier delivery re-verification SMS link.',
+      city: 'Bengaluru',
+      victim_bank_name: institutions[0].name,
+      victim_account_masked: 'XXXXXX0701',
+    },
+    {
+      id: deterministicUuid('cmp-2026-0006'),
+      complaint_number: 'CMP-2026-0006',
+      reference_no: 'FT-2026-000102',
+      victim_id: victims[5].id,
+      filed_by_user_id: users[6].id,
+      assigned_to: invRohanId,
+      fraud_type: 'INVESTMENT_SCAM',
+      reported_amount: 240000,
+      incident_timestamp: hoursAgo(36),
+      reported_at: hoursAgo(30),
+      status: 'MULE_IDENTIFIED',
+      citizen_status: 'Investigation in Progress',
+      priority: 'HIGH',
+      summary:
+        'Citizen lost INR 2,40,000 via two IMPS transfers to fraudulent stock-tips portal promising guaranteed intraday returns.',
+      city: 'Bengaluru',
+      victim_bank_name: institutions[1].name,
+      victim_account_masked: 'XXXXXX0802',
     },
   ];
 
@@ -1031,6 +1185,48 @@ export function generateSyntheticDataset(): SyntheticDataset {
       hop_depth: 2,
       is_flagged_fraud: true,
       remarks: 'Active pre-cashout allocation to Whitefield candidate',
+    }
+  );
+
+  // --- Citizen 1 & Citizen 2 Disputed Transactions ---
+  const c5 = complaints[4].id;
+  const c6 = complaints[5].id;
+  transactions.push(
+    {
+      txn_id: 'UTR-2026-CIT101',
+      from_account: vAccCit1.id,
+      to_account: citBen1.id,
+      amount: 85000,
+      timestamp: hoursAgo(6.8),
+      channel: 'UPI',
+      complaint_id: c5,
+      hop_depth: 1,
+      is_flagged_fraud: true,
+      remarks: 'Citizen-reported unauthorized UPI debit',
+    },
+    {
+      txn_id: 'UTR-2026-CIT201',
+      from_account: vAccCit2.id,
+      to_account: citBen2.id,
+      amount: 140000,
+      timestamp: hoursAgo(35),
+      channel: 'IMPS',
+      complaint_id: c6,
+      hop_depth: 1,
+      is_flagged_fraud: true,
+      remarks: 'Citizen-reported investment portal transfer 1',
+    },
+    {
+      txn_id: 'UTR-2026-CIT202',
+      from_account: vAccCit2.id,
+      to_account: citBen2.id,
+      amount: 100000,
+      timestamp: hoursAgo(33),
+      channel: 'IMPS',
+      complaint_id: c6,
+      hop_depth: 1,
+      is_flagged_fraud: true,
+      remarks: 'Citizen-reported investment portal transfer 2',
     }
   );
 
@@ -1498,6 +1694,85 @@ export function generateSyntheticDataset(): SyntheticDataset {
     },
   ];
 
+  // 15. Complaint Status History & Citizen Notifications
+  const complaintStatusHistory: ComplaintStatusHistorySeed[] = [
+    {
+      id: deterministicUuid('hist-c5-1'),
+      complaint_id: c5,
+      status: 'REGISTERED',
+      citizen_status: 'Submitted',
+      public_remark: 'Complaint received through the FinTrace Citizen Portal with 1 disputed UPI transaction.',
+      internal_note: null,
+      changed_by: users[5].id,
+      changed_at: hoursAgo(6),
+    },
+    {
+      id: deterministicUuid('hist-c5-2'),
+      complaint_id: c5,
+      status: 'TRACING',
+      citizen_status: 'Under Review',
+      public_remark: 'Transaction references are being verified with the receiving payment bank.',
+      internal_note: 'Initial beneficiary SYN600001701 queued for KYC check.',
+      changed_by: users[1].id,
+      changed_at: hoursAgo(3),
+    },
+    {
+      id: deterministicUuid('hist-c6-1'),
+      complaint_id: c6,
+      status: 'REGISTERED',
+      citizen_status: 'Submitted',
+      public_remark: 'Complaint filed online with 2 disputed IMPS transfers.',
+      internal_note: null,
+      changed_by: users[6].id,
+      changed_at: hoursAgo(30),
+    },
+    {
+      id: deterministicUuid('hist-c6-2'),
+      complaint_id: c6,
+      status: 'TRACING',
+      citizen_status: 'Assigned to Investigator',
+      public_remark: 'Your complaint has been assigned to an investigator for transaction tracing.',
+      internal_note: 'Assigned to South-East Cyber Cell queue.',
+      changed_by: users[1].id,
+      changed_at: hoursAgo(22),
+    },
+    {
+      id: deterministicUuid('hist-c6-3'),
+      complaint_id: c6,
+      status: 'MULE_IDENTIFIED',
+      citizen_status: 'Investigation in Progress',
+      public_remark: 'Receiving account freeze coordination has been initiated with the bank nodal team.',
+      internal_note: 'Beneficiary SYN600001802 flagged for rapid layering hold.',
+      changed_by: users[2].id,
+      changed_at: hoursAgo(8),
+    },
+  ];
+
+  const citizenNotifications: CitizenNotificationSeed[] = [
+    {
+      id: deterministicUuid('citnotif-1'),
+      user_id: users[5].id,
+      complaint_id: c5,
+      reference_no: complaints[4].reference_no,
+      title: 'Complaint moved to Under Review',
+      message: 'Transaction references are being verified with the receiving payment bank.',
+      citizen_status: 'Under Review',
+      is_read: false,
+      created_at: hoursAgo(3),
+    },
+    {
+      id: deterministicUuid('citnotif-2'),
+      user_id: users[6].id,
+      complaint_id: c6,
+      reference_no: complaints[5].reference_no,
+      title: 'Investigation in Progress',
+      message: 'Receiving account freeze coordination has been initiated with the bank nodal team.',
+      citizen_status: 'Investigation in Progress',
+      is_read: false,
+      created_at: hoursAgo(8),
+    },
+  ];
+
   return {
     roles,
     institutions,
@@ -1513,5 +1788,7 @@ export function generateSyntheticDataset(): SyntheticDataset {
     alerts,
     investigations,
     evidenceRecords,
+    complaintStatusHistory,
+    citizenNotifications,
   };
 }

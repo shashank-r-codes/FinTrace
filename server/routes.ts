@@ -3,10 +3,19 @@ import { GoogleGenAI } from '@google/genai';
 import bcrypt from 'bcryptjs';
 import { parse } from 'csv-parse/sync';
 import { NextFunction, Request, Response, Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import PDFDocument from 'pdfkit';
 import { z } from 'zod';
+import {
+  CitizenStatus,
+  mapOfficerStatusToCitizenStatus,
+  maskAccountNumber,
+  maskPhoneNumber,
+  toCitizenComplaintDetailDto,
+  toCitizenComplaintSummaryDto,
+} from '../FinTrace/backend/src/modules/citizen/citizen.serializer.ts';
 import {
   computeAtmClusters,
   dbStore,
@@ -19,7 +28,14 @@ import {
   trainBaselineEvaluator,
 } from './store.ts';
 
-type UserRole = 'Administrator' | 'Senior Investigator' | 'Investigator' | 'Bank Nodal Officer';
+type UserRole = 'Administrator' | 'Senior Investigator' | 'Investigator' | 'Bank Nodal Officer' | 'citizen';
+
+const OFFICER_ROLES: UserRole[] = [
+  'Administrator',
+  'Senior Investigator',
+  'Investigator',
+  'Bank Nodal Officer',
+];
 
 interface AuthUserPayload {
   userId: string;
@@ -107,6 +123,42 @@ function authorizeRoles(...allowed: UserRole[]) {
   };
 }
 
+const authorizeOfficer = authorizeRoles(...OFFICER_ROLES);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many authentication attempts. Please try again later.',
+    },
+  },
+});
+
+const ALLOWED_EVIDENCE_MIME = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'application/pdf',
+]);
+
+const citizenUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_EVIDENCE_MIME.has(file.mimetype)) {
+      cb(new HttpError('Only PNG, JPEG, WEBP images and PDF files are allowed.', 400, 'INVALID_FILE_TYPE'));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
 function recordAudit(
   req: AuthedRequest,
   action: string,
@@ -183,7 +235,7 @@ export function createApiRouter(): Router {
 
   // ---------------- AUTH ----------------
   const loginSchema = z.object({ email: z.string().email(), password: z.string().min(6) });
-  api.post('/auth/login', async (req: AuthedRequest, res, next) => {
+  api.post('/auth/login', authLimiter, async (req: AuthedRequest, res, next) => {
     try {
       const { email, password } = parseOrThrow(loginSchema, req.body);
       const user = dbStore.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
@@ -225,7 +277,134 @@ export function createApiRouter(): Router {
             fullName: user.full_name,
             role: user.role_name,
             institutionId: user.institution_id,
+            phoneMasked: user.phone_masked ?? null,
             permissions: roleDef?.permissions ?? [],
+          },
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  const registerCitizenSchema = z
+    .object({
+      fullName: z.string().trim().min(2).max(150),
+      email: z.string().trim().email().max(150),
+      phone: z.string().trim().min(8).max(20),
+      password: z
+        .string()
+        .min(8, 'Password must be at least 8 characters')
+        .max(128)
+        .regex(/[A-Z]/, 'Password must include at least one uppercase letter')
+        .regex(/[a-z]/, 'Password must include at least one lowercase letter')
+        .regex(/[0-9]/, 'Password must include at least one digit')
+        .regex(/[^A-Za-z0-9]/, 'Password must include at least one special character'),
+      confirmPassword: z.string().min(8),
+      city: z.string().trim().min(2).max(100).default('Bengaluru'),
+    })
+    .refine((d) => d.password === d.confirmPassword, {
+      message: 'Passwords do not match',
+      path: ['confirmPassword'],
+    });
+
+  api.post('/auth/register-citizen', authLimiter, async (req: AuthedRequest, res, next) => {
+    try {
+      const rawBody = req.body as Record<string, unknown> | undefined;
+      if (
+        rawBody &&
+        ('role' in rawBody ||
+          'roleName' in rawBody ||
+          'roleId' in rawBody ||
+          'isAdmin' in rawBody ||
+          'permissions' in rawBody)
+      ) {
+        throw new HttpError(
+          'Role assignment is not allowed on self-registration.',
+          400,
+          'ROLE_ASSIGNMENT_FORBIDDEN'
+        );
+      }
+
+      const body = parseOrThrow(registerCitizenSchema, req.body);
+      const emailNormalized = body.email.toLowerCase();
+
+      if (dbStore.users.some((u) => u.email.toLowerCase() === emailNormalized)) {
+        throw new HttpError('An account with this email already exists.', 409, 'EMAIL_EXISTS');
+      }
+
+      const passwordHash = await bcrypt.hash(body.password, 10);
+      const phoneMasked = maskPhoneNumber(body.phone);
+      const victimId = crypto.randomUUID();
+      const userId = crypto.randomUUID();
+      const nowIso = new Date().toISOString();
+
+      dbStore.victims.push({
+        id: victimId,
+        full_name: body.fullName,
+        phone_masked: phoneMasked,
+        email: emailNormalized,
+        city: body.city,
+        state: 'Karnataka',
+        home_lat: 12.9716,
+        home_lng: 77.5946,
+      });
+
+      dbStore.users.unshift({
+        id: userId,
+        email: emailNormalized,
+        password_hash: passwordHash,
+        full_name: body.fullName,
+        role_name: 'citizen',
+        institution_id: null,
+        victim_id: victimId,
+        phone_masked: phoneMasked,
+        is_active: true,
+        last_login_at: nowIso,
+        created_at: nowIso,
+      });
+
+      const payload: AuthUserPayload = {
+        userId,
+        email: emailNormalized,
+        fullName: body.fullName,
+        role: 'citizen',
+        institutionId: null,
+      };
+      const accessToken = signAccessToken(payload);
+      const refreshToken = signRefreshToken(userId);
+      dbStore.refreshTokens.push({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        token_hash: hashToken(refreshToken),
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        revoked_at: null,
+      });
+
+      const roleDef = dbStore.roles.find((r) => r.name === 'citizen');
+      recordAudit(
+        req,
+        'CITIZEN_REGISTERED',
+        'AUTH',
+        userId,
+        201,
+        { email: emailNormalized },
+        { id: userId, role: 'citizen' }
+      );
+
+      res.status(201).json({
+        success: true,
+        data: {
+          accessToken,
+          refreshToken,
+          user: {
+            id: userId,
+            email: emailNormalized,
+            fullName: body.fullName,
+            role: 'citizen',
+            institutionId: null,
+            phoneMasked,
+            permissions: roleDef?.permissions ?? ['citizen_complaints:create', 'citizen_complaints:read_own'],
           },
         },
       });
@@ -306,6 +485,7 @@ export function createApiRouter(): Router {
         fullName: user.full_name,
         role: user.role_name,
         institutionId: user.institution_id,
+        phoneMasked: user.phone_masked ?? null,
         isActive: user.is_active,
         permissions: roleDef?.permissions ?? [],
       },
@@ -317,7 +497,7 @@ export function createApiRouter(): Router {
     res.json({ success: true, data: dbStore.roles });
   });
 
-  api.get('/users/investigators', authenticate, (_req, res) => {
+  api.get('/users/investigators', authenticate, authorizeOfficer, (_req, res) => {
     const rows = dbStore.investigators
       .map((inv) => {
         const u = dbStore.users.find((x) => x.id === inv.user_id);
@@ -396,6 +576,8 @@ export function createApiRouter(): Router {
         full_name: body.fullName,
         role_name: body.roleName,
         institution_id: body.institutionId ?? null,
+        victim_id: null,
+        phone_masked: null,
         is_active: true,
         last_login_at: null,
         created_at: now,
@@ -451,7 +633,7 @@ export function createApiRouter(): Router {
   });
 
   // ---------------- COMPLAINTS ----------------
-  api.get('/complaints', authenticate, (req, res) => {
+  api.get('/complaints', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     let rows = dbStore.complaints.map((c) => {
       const victim = dbStore.victims.find((v) => v.id === c.victim_id);
@@ -460,12 +642,14 @@ export function createApiRouter(): Router {
       return {
         id: c.id,
         complaint_number: c.complaint_number,
+        reference_no: c.reference_no,
         fraud_type: c.fraud_type,
         reported_amount: c.reported_amount,
         currency: c.currency,
         incident_timestamp: c.incident_timestamp.toISOString(),
         reported_at: c.reported_at.toISOString(),
         status: c.status,
+        citizen_status: c.citizen_status,
         priority: c.priority,
         summary: c.summary,
         city: c.city,
@@ -554,14 +738,19 @@ export function createApiRouter(): Router {
           home_lng: body.victim.homeLng ?? 77.5946,
         });
 
-        const nextNum = dbStore.complaints.length + 1;
-        const complaintNumber = `CMP-${new Date().getFullYear()}-${String(nextNum).padStart(4, '0')}`;
+        const nextNum = dbStore.complaints.length + 101;
+        const year = new Date().getFullYear();
+        const complaintNumber = `CMP-${year}-${String(nextNum).padStart(4, '0')}`;
+        const referenceNo = `FT-${year}-${String(nextNum).padStart(4, '0')}${crypto.randomInt(10, 99)}`;
         const cmpId = crypto.randomUUID();
         const now = new Date();
+        const citizenStatus = mapOfficerStatusToCitizenStatus('REGISTERED', Boolean(body.assignedTo));
         const cmp = {
           id: cmpId,
           complaint_number: complaintNumber,
+          reference_no: referenceNo,
           victim_id: victimId,
+          filed_by_user_id: null,
           assigned_to: body.assignedTo ?? null,
           fraud_type: body.fraudType,
           reported_amount: body.reportedAmount,
@@ -569,9 +758,12 @@ export function createApiRouter(): Router {
           incident_timestamp: new Date(body.incidentTimestamp),
           reported_at: now,
           status: 'REGISTERED' as const,
+          citizen_status: citizenStatus,
           priority: body.priority,
           summary: body.summary,
           city: body.city,
+          victim_bank_name: null,
+          victim_account_masked: null,
           is_synthetic: true,
           created_at: now.toISOString(),
           updated_at: now.toISOString(),
@@ -604,7 +796,7 @@ export function createApiRouter(): Router {
     }
   );
 
-  api.get('/complaints/:id', authenticate, (req, res, next) => {
+  api.get('/complaints/:id', authenticate, authorizeOfficer, (req, res, next) => {
     const cmp = dbStore.complaints.find((c) => c.id === req.params.id);
     if (!cmp) {
       next(new HttpError('Complaint not found.', 404, 'COMPLAINT_NOT_FOUND'));
@@ -615,6 +807,7 @@ export function createApiRouter(): Router {
     const invUser = inv ? dbStore.users.find((u) => u.id === inv.user_id) : null;
     const accMap = new Map(dbStore.accounts.map((a) => [a.id, a]));
     const atmMap = new Map(dbStore.atms.map((a) => [a.id, a]));
+    const userMap = new Map(dbStore.users.map((u) => [u.id, u]));
 
     const txns = dbStore.transactions
       .filter((t) => t.complaint_id === cmp.id)
@@ -659,6 +852,14 @@ export function createApiRouter(): Router {
         };
       });
 
+    const statusHistory = dbStore.complaintStatusHistory
+      .filter((h) => h.complaint_id === cmp.id)
+      .sort((a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime())
+      .map((h) => ({
+        ...h,
+        changed_by_name: h.changed_by ? userMap.get(h.changed_by)?.full_name ?? 'Officer' : 'System',
+      }));
+
     res.json({
       success: true,
       data: {
@@ -680,6 +881,7 @@ export function createApiRouter(): Router {
         suspiciousAccounts: susp,
         investigation,
         atmPredictions,
+        statusHistory,
       },
     });
   });
@@ -694,17 +896,70 @@ export function createApiRouter(): Router {
           z.object({
             status: z.enum(['REGISTERED', 'TRACING', 'MULE_IDENTIFIED', 'ATM_ALERTED', 'CONTAINED', 'CLOSED']),
             assignedTo: z.string().uuid().nullable().optional(),
+            publicRemark: z.string().max(1000).optional(),
+            internalNote: z.string().max(2000).optional(),
+            citizenStatus: z
+              .enum([
+                'Submitted',
+                'Under Review',
+                'Assigned to Investigator',
+                'Investigation in Progress',
+                'Action Taken / Closed',
+              ])
+              .optional(),
           }),
           req.body
         );
         const cmp = dbStore.complaints.find((c) => c.id === req.params.id);
         if (!cmp) throw new HttpError('Complaint not found.', 404, 'COMPLAINT_NOT_FOUND');
 
-        cmp.status = body.status;
-        if (body.assignedTo !== undefined) cmp.assigned_to = body.assignedTo;
-        cmp.updated_at = new Date().toISOString();
+        const nextAssignedTo = body.assignedTo !== undefined ? body.assignedTo : cmp.assigned_to;
+        const nextCitizenStatus: CitizenStatus =
+          body.citizenStatus ?? mapOfficerStatusToCitizenStatus(body.status, Boolean(nextAssignedTo));
+        const nowIso = new Date().toISOString();
 
-        recordAudit(req, 'COMPLAINT_STATUS_UPDATED', 'COMPLAINT', cmp.id, 200, body as Record<string, unknown>);
+        cmp.status = body.status;
+        cmp.assigned_to = nextAssignedTo;
+        cmp.citizen_status = nextCitizenStatus;
+        cmp.updated_at = nowIso;
+
+        const cleanPublicRemark = body.publicRemark?.trim() || null;
+        const cleanInternalNote = body.internalNote?.trim() || null;
+
+        dbStore.complaintStatusHistory.push({
+          id: crypto.randomUUID(),
+          complaint_id: cmp.id,
+          status: body.status,
+          citizen_status: nextCitizenStatus,
+          public_remark: cleanPublicRemark,
+          internal_note: cleanInternalNote,
+          changed_by: req.user!.userId,
+          changed_at: nowIso,
+        });
+
+        if (cmp.filed_by_user_id) {
+          dbStore.citizenNotifications.unshift({
+            id: crypto.randomUUID(),
+            user_id: cmp.filed_by_user_id,
+            complaint_id: cmp.id,
+            reference_no: cmp.reference_no,
+            title: `Status updated: ${nextCitizenStatus}`,
+            message:
+              cleanPublicRemark ??
+              `Your complaint ${cmp.reference_no} moved to '${nextCitizenStatus}'.`,
+            citizen_status: nextCitizenStatus,
+            is_read: false,
+            created_at: nowIso,
+          });
+        }
+
+        recordAudit(req, 'COMPLAINT_STATUS_UPDATED', 'COMPLAINT', cmp.id, 200, {
+          status: body.status,
+          citizen_status: nextCitizenStatus,
+          assignedTo: nextAssignedTo,
+          hasPublicRemark: Boolean(cleanPublicRemark),
+          hasInternalNote: Boolean(cleanInternalNote),
+        });
         res.json({ success: true, data: cmp });
       } catch (err) {
         next(err);
@@ -713,11 +968,11 @@ export function createApiRouter(): Router {
   );
 
   // ---------------- ACCOUNTS ----------------
-  api.get('/accounts/institutions', authenticate, (_req, res) => {
+  api.get('/accounts/institutions', authenticate, authorizeOfficer, (_req, res) => {
     res.json({ success: true, data: dbStore.institutions });
   });
 
-  api.get('/accounts', authenticate, (req, res) => {
+  api.get('/accounts', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     const instMap = new Map(dbStore.institutions.map((i) => [i.id, i]));
     let rows = dbStore.accounts.map((acc) => {
@@ -763,7 +1018,7 @@ export function createApiRouter(): Router {
     res.json({ success: true, data: rows.slice(offset, offset + limit) });
   });
 
-  api.get('/accounts/:id', authenticate, (req, res, next) => {
+  api.get('/accounts/:id', authenticate, authorizeOfficer, (req, res, next) => {
     const acc = dbStore.accounts.find((a) => a.id === req.params.id);
     if (!acc) {
       next(new HttpError('Bank account not found.', 404, 'ACCOUNT_NOT_FOUND'));
@@ -894,7 +1149,7 @@ export function createApiRouter(): Router {
   );
 
   // ---------------- TRANSACTIONS ----------------
-  api.get('/transactions', authenticate, (req, res) => {
+  api.get('/transactions', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     const accMap = new Map(dbStore.accounts.map((a) => [a.id, a]));
     const cmpMap = new Map(dbStore.complaints.map((c) => [c.id, c]));
@@ -1112,7 +1367,7 @@ export function createApiRouter(): Router {
   );
 
   // ---------------- GRAPH ----------------
-  api.get('/graph/cte-trace', authenticate, (req, res, next) => {
+  api.get('/graph/cte-trace', authenticate, authorizeOfficer, (req, res, next) => {
     try {
       const q = parseOrThrow(
         z.object({
@@ -1137,7 +1392,7 @@ export function createApiRouter(): Router {
     }
   });
 
-  api.get('/graph/trace', authenticate, (req, res, next) => {
+  api.get('/graph/trace', authenticate, authorizeOfficer, (req, res, next) => {
     try {
       const q = parseOrThrow(
         z.object({
@@ -1158,7 +1413,7 @@ export function createApiRouter(): Router {
     }
   });
 
-  api.get('/graph/complaint/:id', authenticate, (req: AuthedRequest, res, next) => {
+  api.get('/graph/complaint/:id', authenticate, authorizeOfficer, (req: AuthedRequest, res, next) => {
     const cmp = dbStore.complaints.find((c) => c.id === req.params.id);
     if (!cmp) {
       next(new HttpError('Complaint not found.', 404, 'COMPLAINT_NOT_FOUND'));
@@ -1169,7 +1424,7 @@ export function createApiRouter(): Router {
     res.json({ success: true, data: graphData });
   });
 
-  api.get('/graph/paths', authenticate, (req, res, next) => {
+  api.get('/graph/paths', authenticate, authorizeOfficer, (req, res, next) => {
     try {
       const q = parseOrThrow(
         z.object({
@@ -1209,7 +1464,7 @@ export function createApiRouter(): Router {
     }
   );
 
-  api.get('/ml/metrics', authenticate, (_req, res) => {
+  api.get('/ml/metrics', authenticate, authorizeOfficer, (_req, res) => {
     res.json({ success: true, data: dbStore.modelMetrics.slice(0, 10) });
   });
 
@@ -1239,7 +1494,7 @@ export function createApiRouter(): Router {
     }
   );
 
-  api.get('/ml/predictions', authenticate, (req, res) => {
+  api.get('/ml/predictions', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     const accMap = new Map(dbStore.accounts.map((a) => [a.id, a]));
     const cmpMap = new Map(dbStore.complaints.map((c) => [c.id, c]));
@@ -1262,12 +1517,12 @@ export function createApiRouter(): Router {
     res.json({ success: true, data: rows.slice(0, limit) });
   });
 
-  api.get('/ml/clusters/atms', authenticate, (_req, res) => {
+  api.get('/ml/clusters/atms', authenticate, authorizeOfficer, (_req, res) => {
     res.json({ success: true, data: { clusters: computeAtmClusters(dbStore) } });
   });
 
   // ---------------- ATMs & PREDICTIONS ----------------
-  api.get('/atms', authenticate, (req, res) => {
+  api.get('/atms', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     let rows = dbStore.atms.map((atm) => {
       const preds = dbStore.atmPredictions.filter((p) => p.atm_id === atm.id);
@@ -1286,7 +1541,7 @@ export function createApiRouter(): Router {
     res.json({ success: true, data: rows });
   });
 
-  api.get('/atms/withdrawals', authenticate, (req, res) => {
+  api.get('/atms/withdrawals', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     const atmMap = new Map(dbStore.atms.map((a) => [a.id, a]));
     const accMap = new Map(dbStore.accounts.map((a) => [a.id, a]));
@@ -1375,7 +1630,7 @@ export function createApiRouter(): Router {
     }
   );
 
-  api.get('/predictions/atm', authenticate, (req, res) => {
+  api.get('/predictions/atm', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     const atmMap = new Map(dbStore.atms.map((a) => [a.id, a]));
     const cmpMap = new Map(dbStore.complaints.map((c) => [c.id, c]));
@@ -1415,11 +1670,13 @@ export function createApiRouter(): Router {
     res.json({ success: true, data: { top3: sliced.slice(0, 3), predictions: sliced } });
   });
 
-  api.get('/predictions/atm/heatmap', authenticate, (_req, res) => {
+  api.get('/predictions/atm/heatmap', authenticate, authorizeOfficer, (_req, res) => {
+    const accMap = new Map(dbStore.accounts.map((a) => [a.id, a]));
     const rows = dbStore.atms
       .map((atm) => {
         const preds = dbStore.atmPredictions.filter((p) => p.atm_id === atm.id).sort((a, b) => b.risk_score - a.risk_score);
         const wds = dbStore.atmWithdrawals.filter((w) => w.atm_id === atm.id);
+        const topPred = preds[0];
         return {
           atm_id: atm.id,
           bank: atm.bank,
@@ -1428,9 +1685,14 @@ export function createApiRouter(): Router {
           city: atm.city,
           lat: atm.lat,
           lng: atm.lng,
-          max_risk_score: preds[0]?.risk_score ?? 0,
-          peak_risk_level: preds[0]?.risk_level ?? 'Low',
-          peak_window: preds[0]?.window ?? '>24h',
+          max_risk_score: topPred?.risk_score ?? 0,
+          peak_risk_level: topPred?.risk_level ?? 'Low',
+          peak_window: topPred?.window ?? '>24h',
+          top_linked_accounts: (topPred?.linked_accounts_json ?? []).map((la) => ({
+            ...la,
+            holder_name: accMap.get(la.account_id)?.holder_name ?? la.account_number,
+          })),
+          top_relevant_paths: topPred?.relevant_paths_json ?? [],
           prediction_count: preds.length,
           withdrawal_count: wds.length,
         };
@@ -1440,7 +1702,7 @@ export function createApiRouter(): Router {
   });
 
   // ---------------- ALERTS ----------------
-  api.get('/alerts', authenticate, (req, res) => {
+  api.get('/alerts', authenticate, authorizeOfficer, (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     const cmpMap = new Map(dbStore.complaints.map((c) => [c.id, c]));
     const accMap = new Map(dbStore.accounts.map((a) => [a.id, a]));
@@ -1693,7 +1955,7 @@ export function createApiRouter(): Router {
 
       let rows = dbStore.evidenceRecords.map((er) => ({
         ...er,
-        case_number: invMap.get(er.investigation_id)?.case_number ?? 'N/A',
+        case_number: er.investigation_id ? (invMap.get(er.investigation_id)?.case_number ?? 'Citizen Upload') : 'Citizen Upload',
         complaint_number: cmpMap.get(er.complaint_id)?.complaint_number ?? 'N/A',
         uploaded_by_name: userMap.get(er.uploaded_by)?.full_name ?? 'Investigator',
         uploaded_by_email: userMap.get(er.uploaded_by)?.email ?? '',
@@ -1816,7 +2078,7 @@ export function createApiRouter(): Router {
   );
 
   // ---------------- REPORTS ----------------
-  api.get('/reports/analytics', authenticate, (_req, res) => {
+  api.get('/reports/analytics', authenticate, authorizeOfficer, (_req, res) => {
     const statusMap = new Map<string, { status: string; count: number; total_amount: number }>();
     const fraudMap = new Map<string, { fraud_type: string; count: number; total_amount: number }>();
     for (const c of dbStore.complaints) {
@@ -2291,6 +2553,389 @@ export function createApiRouter(): Router {
       }
     }
   );
+
+  // ---------------- CITIZEN PORTAL (STRICT OWNERSHIP + DTO) ----------------
+  const INCIDENT_TO_FRAUD: Record<
+    string,
+    'UPI_PHISHING' | 'INVESTMENT_SCAM' | 'DIGITAL_ARREST' | 'OTP_HIJACK' | 'CARD_SKIMMING' | 'OTHER'
+  > = {
+    UPI_FRAUD: 'UPI_PHISHING',
+    UPI_PHISHING: 'UPI_PHISHING',
+    PHISHING: 'UPI_PHISHING',
+    INVESTMENT_SCAM: 'INVESTMENT_SCAM',
+    OTP_VISHING: 'OTP_HIJACK',
+    OTP_HIJACK: 'OTP_HIJACK',
+    CARD_FRAUD: 'CARD_SKIMMING',
+    CARD_SKIMMING: 'CARD_SKIMMING',
+    DIGITAL_ARREST: 'DIGITAL_ARREST',
+    SEXTORTION_OTHER: 'OTHER',
+    OTHER: 'OTHER',
+  };
+
+  const citizenCreateSchema = z.object({
+    incidentType: z.enum([
+      'UPI_FRAUD',
+      'PHISHING',
+      'INVESTMENT_SCAM',
+      'OTP_VISHING',
+      'CARD_FRAUD',
+      'SEXTORTION_OTHER',
+      'UPI_PHISHING',
+      'DIGITAL_ARREST',
+      'OTP_HIJACK',
+      'CARD_SKIMMING',
+      'OTHER',
+    ]),
+    incidentTimestamp: z.string().min(8),
+    description: z.string().min(10).max(2000),
+    amountLost: z.coerce.number().positive(),
+    victimBankName: z.string().min(2).max(150),
+    victimAccountNumber: z.string().min(4).max(64),
+    city: z.string().min(2).max(100).default('Bengaluru'),
+    disputedTransactions: z
+      .array(
+        z.object({
+          txnId: z.string().min(4).max(64),
+          date: z.string().min(8),
+          amount: z.coerce.number().positive(),
+          beneficiaryAccount: z.string().min(4).max(64),
+          beneficiaryBank: z.string().min(2).max(120),
+          channel: z.enum(['UPI', 'IMPS', 'NEFT', 'RTGS', 'CARD', 'WALLET']).default('UPI'),
+        })
+      )
+      .min(1)
+      .max(25),
+  });
+
+  api.get('/citizen/complaints', authenticate, authorizeRoles('citizen'), (req: AuthedRequest, res) => {
+    const q = req.query as Record<string, string | undefined>;
+    let mine = dbStore.complaints.filter((c) => c.filed_by_user_id === req.user!.userId);
+    if (q.citizenStatus) {
+      mine = mine.filter((c) => c.citizen_status === q.citizenStatus);
+    }
+    if (q.search) {
+      const s = q.search.toLowerCase();
+      mine = mine.filter(
+        (c) =>
+          c.reference_no.toLowerCase().includes(s) ||
+          c.summary.toLowerCase().includes(s) ||
+          c.fraud_type.toLowerCase().includes(s)
+      );
+    }
+    mine.sort((a, b) => b.reported_at.getTime() - a.reported_at.getTime());
+
+    const data = mine.map((c) =>
+      toCitizenComplaintSummaryDto({
+        ...c,
+        transaction_count: dbStore.transactions.filter((t) => t.complaint_id === c.id).length,
+        document_count: dbStore.evidenceRecords.filter(
+          (e) => e.complaint_id === c.id && e.is_citizen_visible !== false
+        ).length,
+      })
+    );
+    res.json({ success: true, data });
+  });
+
+  api.post('/citizen/complaints', authenticate, authorizeRoles('citizen'), (req: AuthedRequest, res, next) => {
+    try {
+      const body = parseOrThrow(citizenCreateSchema, req.body);
+      const user = dbStore.users.find((u) => u.id === req.user!.userId);
+      if (!user) throw new HttpError('Citizen profile not found.', 404, 'USER_NOT_FOUND');
+
+      const incidentDate = new Date(body.incidentTimestamp);
+      if (Number.isNaN(incidentDate.getTime())) {
+        throw new HttpError('Invalid incidentTimestamp provided.', 400, 'VALIDATION_ERROR');
+      }
+
+      let victimId = user.victim_id ?? null;
+      if (!victimId) {
+        victimId = crypto.randomUUID();
+        dbStore.victims.push({
+          id: victimId,
+          full_name: user.full_name,
+          phone_masked: user.phone_masked ?? '+91-98XXX-XX000',
+          email: user.email,
+          city: body.city,
+          state: 'Karnataka',
+          home_lat: 12.9716,
+          home_lng: 77.5946,
+        });
+        user.victim_id = victimId;
+      }
+
+      const nextNum = dbStore.complaints.length + 101;
+      const year = new Date().getFullYear();
+      const suffix = crypto.randomInt(10, 99);
+      const complaintNumber = `CMP-${year}-${String(nextNum).padStart(4, '0')}`;
+      const referenceNo = `FT-${year}-${String(nextNum).padStart(4, '0')}${suffix}`;
+      const cmpId = crypto.randomUUID();
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const fraudType = INCIDENT_TO_FRAUD[body.incidentType] ?? 'OTHER';
+      const priority = body.amountLost >= 500000 ? 'CRITICAL' : body.amountLost >= 100000 ? 'HIGH' : 'MEDIUM';
+
+      const createdCmp = {
+        id: cmpId,
+        complaint_number: complaintNumber,
+        reference_no: referenceNo,
+        victim_id: victimId,
+        filed_by_user_id: user.id,
+        assigned_to: null,
+        fraud_type: fraudType,
+        reported_amount: body.amountLost,
+        currency: 'INR',
+        incident_timestamp: incidentDate,
+        reported_at: now,
+        status: 'REGISTERED' as const,
+        citizen_status: 'Submitted' as CitizenStatus,
+        priority: priority as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+        summary: body.description,
+        city: body.city,
+        victim_bank_name: body.victimBankName,
+        victim_account_masked: maskAccountNumber(body.victimAccountNumber),
+        is_synthetic: true,
+        created_at: nowIso,
+        updated_at: nowIso,
+      };
+      dbStore.complaints.unshift(createdCmp);
+
+      dbStore.investigations.unshift({
+        id: crypto.randomUUID(),
+        case_number: `INV-BLR-${year}-${String(nextNum).padStart(3, '0')}`,
+        complaint_id: cmpId,
+        lead_investigator: null,
+        status: 'OPEN',
+        findings_summary: `Citizen portal intake (${referenceNo}) pending investigator review.`,
+        recommended_actions: [],
+        opened_at: nowIso,
+        closed_at: null,
+        updated_at: nowIso,
+      });
+
+      const defaultInstId = dbStore.institutions[0]?.id ?? 'inst-01';
+      const ensureAccount = (acctNumRaw: string, holderName: string, isVictim: boolean) => {
+        const clean = acctNumRaw.trim().toUpperCase().slice(0, 32);
+        const existing = dbStore.accounts.find((a) => a.account_number.toUpperCase() === clean);
+        if (existing) return existing;
+        const createdAcc = {
+          id: crypto.randomUUID(),
+          account_number: clean,
+          institution_id: defaultInstId,
+          holder_name: holderName,
+          account_type: (isVictim ? 'SAVINGS' : 'CURRENT') as 'SAVINGS' | 'CURRENT',
+          ifsc_code: 'SYNS0001099',
+          branch_city: body.city,
+          branch_lat: 12.9716,
+          branch_lng: 77.5946,
+          kyc_verified: isVictim,
+          account_age_days: isVictim ? 920 : 22,
+          is_frozen: false,
+        };
+        dbStore.accounts.push(createdAcc);
+        return createdAcc;
+      };
+
+      const victimAcc = ensureAccount(body.victimAccountNumber, user.full_name, true);
+      for (const tx of body.disputedTransactions) {
+        const benAcc = ensureAccount(tx.beneficiaryAccount, `${tx.beneficiaryBank} Beneficiary`, false);
+        const txDate = new Date(tx.date);
+        const validDate = Number.isNaN(txDate.getTime()) ? incidentDate : txDate;
+        const cleanTxnId = tx.txnId.trim().slice(0, 64);
+        if (!dbStore.transactions.some((existing) => existing.txn_id === cleanTxnId)) {
+          dbStore.transactions.unshift({
+            id: crypto.randomUUID(),
+            txn_id: cleanTxnId,
+            from_account: victimAcc.id,
+            to_account: benAcc.id,
+            amount: tx.amount,
+            currency: 'INR',
+            timestamp: validDate,
+            channel: tx.channel,
+            complaint_id: cmpId,
+            hop_depth: 1,
+            is_flagged_fraud: true,
+            remarks: `Citizen intake disputed transfer (${tx.beneficiaryBank})`,
+            is_synthetic: true,
+          });
+        }
+      }
+
+      dbStore.complaintStatusHistory.push({
+        id: crypto.randomUUID(),
+        complaint_id: cmpId,
+        status: 'REGISTERED',
+        citizen_status: 'Submitted',
+        public_remark: `Complaint registered with reference ${referenceNo} and ${body.disputedTransactions.length} disputed transaction(s).`,
+        internal_note: null,
+        changed_by: user.id,
+        changed_at: nowIso,
+      });
+
+      dbStore.alerts.unshift({
+        id: crypto.randomUUID(),
+        complaint_id: cmpId,
+        account_id: null,
+        atm_id: null,
+        alert_type: 'HIGH_VALUE_HOP',
+        severity: body.amountLost >= 500000 ? 'Critical' : body.amountLost >= 100000 ? 'High' : 'Medium',
+        status: 'OPEN',
+        title: `New Citizen Complaint Filed: ${referenceNo} (${fraudType})`,
+        description: `Citizen portal intake for INR ${Number(body.amountLost).toLocaleString('en-IN')} across ${body.disputedTransactions.length} disputed transaction(s). Ready for graph trace and ML scoring.`,
+        score_source: 'Rule-based risk score',
+        acknowledged_by: null,
+        acknowledged_at: null,
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      recordAudit(req, 'CITIZEN_COMPLAINT_SUBMITTED', 'COMPLAINT', cmpId, 201, {
+        reference_no: referenceNo,
+        reported_amount: body.amountLost,
+        disputed_txn_count: body.disputedTransactions.length,
+      });
+
+      res.status(201).json({
+        success: true,
+        data: toCitizenComplaintSummaryDto({
+          ...createdCmp,
+          transaction_count: body.disputedTransactions.length,
+          document_count: 0,
+        }),
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  api.get('/citizen/complaints/:id', authenticate, authorizeRoles('citizen'), (req: AuthedRequest, res, next) => {
+    const cmp = dbStore.complaints.find(
+      (c) => c.id === req.params.id && c.filed_by_user_id === req.user!.userId
+    );
+    if (!cmp) {
+      next(new HttpError('Complaint not found.', 404, 'COMPLAINT_NOT_FOUND'));
+      return;
+    }
+
+    const accMap = new Map(dbStore.accounts.map((a) => [a.id, a]));
+    const instMap = new Map(dbStore.institutions.map((i) => [i.id, i]));
+
+    const txns = dbStore.transactions
+      .filter((t) => t.complaint_id === cmp.id)
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+      .map((t) => {
+        const toAcc = accMap.get(t.to_account);
+        const toInst = toAcc ? instMap.get(toAcc.institution_id) : null;
+        return {
+          txn_id: t.txn_id,
+          timestamp: t.timestamp,
+          amount: t.amount,
+          channel: t.channel,
+          to_account_number: toAcc?.account_number ?? t.to_account,
+          beneficiary_bank: toInst?.name ?? 'Beneficiary Bank',
+        };
+      });
+
+    const history = dbStore.complaintStatusHistory
+      .filter((h) => h.complaint_id === cmp.id)
+      .sort((a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime());
+
+    const docs = dbStore.evidenceRecords
+      .filter((e) => e.complaint_id === cmp.id && e.is_citizen_visible !== false)
+      .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+
+    res.json({
+      success: true,
+      data: toCitizenComplaintDetailDto(cmp, txns, history, docs),
+    });
+  });
+
+  api.post(
+    '/citizen/complaints/:id/evidence',
+    authenticate,
+    authorizeRoles('citizen'),
+    citizenUpload.single('file'),
+    (req: AuthedRequest, res, next) => {
+      try {
+        const cmp = dbStore.complaints.find(
+          (c) => c.id === req.params.id && c.filed_by_user_id === req.user!.userId
+        );
+        if (!cmp) throw new HttpError('Complaint not found.', 404, 'COMPLAINT_NOT_FOUND');
+        if (!req.file) {
+          throw new HttpError('Evidence file (PNG, JPEG, WEBP, or PDF, max 5MB) is required.', 400, 'FILE_MISSING');
+        }
+
+        const title =
+          typeof req.body?.title === 'string' && req.body.title.trim().length >= 3
+            ? req.body.title.trim().slice(0, 200)
+            : req.file.originalname;
+        const description =
+          typeof req.body?.description === 'string' && req.body.description.trim().length > 0
+            ? req.body.description.trim().slice(0, 1000)
+            : `Supporting evidence uploaded by complainant (${req.file.originalname})`;
+
+        const sha256Hash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+        const inv = dbStore.investigations.find((i) => i.complaint_id === cmp.id);
+        const nowIso = new Date().toISOString();
+
+        const created = {
+          id: crypto.randomUUID(),
+          investigation_id: inv?.id ?? null,
+          complaint_id: cmp.id,
+          uploaded_by: req.user!.userId,
+          evidence_type: 'OTHER' as const,
+          title,
+          description,
+          file_name: req.file.originalname,
+          mime_type: req.file.mimetype,
+          file_size: req.file.size,
+          is_citizen_visible: true,
+          sha256_hash: sha256Hash,
+          metadata_json: { source: 'citizen_portal', sha256_hash: sha256Hash },
+          recorded_at: nowIso,
+        };
+        dbStore.evidenceRecords.unshift(created);
+
+        recordAudit(req, 'CITIZEN_EVIDENCE_UPLOADED', 'EVIDENCE', created.id, 201, {
+          complaint_id: cmp.id,
+          file_name: req.file.originalname,
+          file_size: req.file.size,
+        });
+
+        res.status(201).json({
+          success: true,
+          data: {
+            id: created.id,
+            title: created.title,
+            file_name: created.file_name,
+            mime_type: created.mime_type,
+            file_size: created.file_size,
+            uploaded_at: created.recorded_at,
+          },
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  api.get('/citizen/notifications', authenticate, authorizeRoles('citizen'), (req: AuthedRequest, res) => {
+    const notifications = dbStore.citizenNotifications
+      .filter((n) => n.user_id === req.user!.userId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 30);
+    const unreadCount = notifications.filter((n) => !n.is_read).length;
+    res.json({
+      success: true,
+      data: { unreadCount, notifications },
+    });
+  });
+
+  api.post('/citizen/notifications/read', authenticate, authorizeRoles('citizen'), (req: AuthedRequest, res) => {
+    for (const n of dbStore.citizenNotifications) {
+      if (n.user_id === req.user!.userId) n.is_read = true;
+    }
+    res.json({ success: true });
+  });
 
   // API 404 & Error handler
   api.use((_req, _res, next) => {

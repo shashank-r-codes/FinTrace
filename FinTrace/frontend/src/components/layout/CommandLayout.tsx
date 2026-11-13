@@ -22,6 +22,7 @@ import { ReactNode, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 interface NavItem {
   path: string;
@@ -31,7 +32,7 @@ interface NavItem {
   roles: UserRole[];
 }
 
-const ALL_ROLES: UserRole[] = [
+const ALL_OFFICER_ROLES: UserRole[] = [
   'Administrator',
   'Senior Investigator',
   'Investigator',
@@ -39,14 +40,14 @@ const ALL_ROLES: UserRole[] = [
 ];
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/', label: 'Command Dashboard', section: 'Core Operations', icon: LayoutDashboard, roles: ALL_ROLES },
-  { path: '/complaints', label: 'Complaints Registry', section: 'Core Operations', icon: FileText, roles: ALL_ROLES },
-  { path: '/transactions', label: 'Transaction Explorer', section: 'Core Operations', icon: ArrowLeftRight, roles: ALL_ROLES },
-  { path: '/graph', label: 'Network & Hop Graph', section: 'Intelligence Engines', icon: Network, roles: ALL_ROLES },
-  { path: '/fraud-ml', label: 'ML Fraud & Mule Risk', section: 'Intelligence Engines', icon: Cpu, roles: ALL_ROLES },
-  { path: '/atm-predictions', label: 'ATM Cash-Out Engine', section: 'Intelligence Engines', icon: Landmark, roles: ALL_ROLES },
-  { path: '/map', label: 'GIS Hotspot Map', section: 'Intelligence Engines', icon: MapPin, roles: ALL_ROLES },
-  { path: '/alerts', label: 'Early Warning Alerts', section: 'Response & Casework', icon: BellRing, roles: ALL_ROLES },
+  { path: '/', label: 'Command Dashboard', section: 'Core Operations', icon: LayoutDashboard, roles: ALL_OFFICER_ROLES },
+  { path: '/complaints', label: 'Complaints Registry', section: 'Core Operations', icon: FileText, roles: ALL_OFFICER_ROLES },
+  { path: '/transactions', label: 'Transaction Explorer', section: 'Core Operations', icon: ArrowLeftRight, roles: ALL_OFFICER_ROLES },
+  { path: '/graph', label: 'Network & Hop Graph', section: 'Intelligence Engines', icon: Network, roles: ALL_OFFICER_ROLES },
+  { path: '/fraud-ml', label: 'ML Fraud & Mule Risk', section: 'Intelligence Engines', icon: Cpu, roles: ALL_OFFICER_ROLES },
+  { path: '/atm-predictions', label: 'ATM Cash-Out Engine', section: 'Intelligence Engines', icon: Landmark, roles: ALL_OFFICER_ROLES },
+  { path: '/map', label: 'GIS Hotspot Map', section: 'Intelligence Engines', icon: MapPin, roles: ALL_OFFICER_ROLES },
+  { path: '/alerts', label: 'Early Warning Alerts', section: 'Response & Casework', icon: BellRing, roles: ALL_OFFICER_ROLES },
   {
     path: '/investigations',
     label: 'Investigations',
@@ -107,21 +108,21 @@ export function CommandLayout({ title, section = 'Command', actions, children }:
   };
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-[#090E1A] border-r border-slate-800/90">
-      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/90">
+    <div className="flex h-full flex-col bg-sidebar border-r border-border-subtle transition-colors duration-200">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-border-subtle bg-grad-sky">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-sky-500/40 bg-sky-950/60 text-sky-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-accent-strong/40 bg-card text-accent-strong shadow-xs">
             <Shield className="h-4 w-4" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-sm font-bold tracking-tight text-slate-100">FinTrace</p>
-            <p className="text-[11px] text-slate-400">SIH PS 26184 · Predictive Intel</p>
+            <p className="text-sm font-bold tracking-tight text-heading">FinTrace</p>
+            <p className="text-[11px] text-muted">SIH PS 26184 · Predictive Intel</p>
           </div>
         </div>
         <button
           type="button"
           onClick={() => setMobileNavOpen(false)}
-          className="lg:hidden rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100 cursor-pointer"
+          className="lg:hidden rounded p-1 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
           aria-label="Close navigation"
         >
           <X className="h-4 w-4" />
@@ -131,7 +132,7 @@ export function CommandLayout({ title, section = 'Command', actions, children }:
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5" aria-label="Primary navigation">
         {sections.map((secName) => (
           <div key={secName}>
-            <p className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <p className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
               {secName}
             </p>
             <ul className="space-y-0.5">
@@ -148,14 +149,14 @@ export function CommandLayout({ title, section = 'Command', actions, children }:
                       <NavLink
                         to={item.path}
                         onClick={() => setMobileNavOpen(false)}
-                        className={`flex items-center gap-2.5 rounded-[5px] px-2.5 py-2 text-[13px] font-medium transition-colors whitespace-nowrap ${
+                        className={`flex items-center gap-2.5 rounded-[5px] px-2.5 py-2 text-[13px] font-medium transition-colors duration-150 whitespace-nowrap ${
                           isActive
-                            ? 'bg-sky-950/70 text-sky-200 border border-sky-500/30'
-                            : 'text-slate-300 border border-transparent hover:bg-slate-800/60 hover:text-white'
+                            ? 'bg-highlight text-heading border border-accent-strong/40 dark:bg-sky-950/70 dark:text-sky-100 dark:border-sky-500/35'
+                            : 'text-body border border-transparent hover:bg-subtle hover:text-heading'
                         }`}
                       >
                         <Icon
-                          className={`h-4 w-4 shrink-0 ${isActive ? 'text-sky-400' : 'text-slate-400'}`}
+                          className={`h-4 w-4 shrink-0 ${isActive ? 'text-accent-strong dark:text-sky-400' : 'text-muted'}`}
                           aria-hidden="true"
                         />
                         <span className="truncate">{item.label}</span>
@@ -168,17 +169,17 @@ export function CommandLayout({ title, section = 'Command', actions, children }:
         ))}
       </nav>
 
-      <div className="border-t border-slate-800/90 p-3 space-y-2.5">
+      <div className="border-t border-border-subtle p-3 space-y-2.5 bg-subtle/60">
         <div className="px-2">
-          <p className="text-xs font-semibold text-slate-200 truncate">{user?.fullName}</p>
-          <p className="text-[11px] text-slate-400 truncate">
+          <p className="text-xs font-semibold text-heading truncate">{user?.fullName}</p>
+          <p className="text-[11px] text-muted truncate">
             {user?.role} · {user?.email}
           </p>
         </div>
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-[5px] border border-slate-700/80 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer"
+          className="flex w-full items-center justify-center gap-2 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer transition-colors duration-150"
         >
           <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
           Sign Out
@@ -188,7 +189,7 @@ export function CommandLayout({ title, section = 'Command', actions, children }:
   );
 
   return (
-    <div className="flex min-h-screen bg-[#0B1120] text-slate-100">
+    <div className="flex min-h-screen bg-app text-heading transition-colors duration-200">
       <aside className="hidden lg:block lg:w-64 lg:shrink-0 sticky top-0 h-screen">
         {sidebarContent}
       </aside>
@@ -206,45 +207,46 @@ export function CommandLayout({ title, section = 'Command', actions, children }:
 
       <div className="flex flex-1 flex-col min-w-0">
         {showSyntheticBanner ? (
-          <div className="border-b border-amber-500/25 bg-amber-950/30 px-4 py-1.5 text-[11px] text-amber-200 flex items-center justify-between gap-2">
+          <div className="border-b border-amber-300 bg-[#FEF3C7] text-[#92400E] dark:border-amber-500/25 dark:bg-amber-950/30 dark:text-amber-200 px-4 py-1.5 text-[11px] flex items-center justify-between gap-2">
             <span className="flex items-center gap-2">
-              <Activity className="h-3.5 w-3.5 text-amber-400 shrink-0" aria-hidden="true" />
+              <Activity className="h-3.5 w-3.5 text-[#B45309] dark:text-amber-400 shrink-0" aria-hidden="true" />
               <span>
                 Synthetic Demonstration Dataset · All accounts, transactions, and Bengaluru ATM records are synthetic for investigative simulation.
               </span>
             </span>
-            <span className="hidden sm:inline font-mono text-[11px] text-amber-300/80">
+            <span className="hidden sm:inline font-mono text-[11px] opacity-85">
               ENV: DEMO-BLR
             </span>
           </div>
         ) : null}
 
-        <header className="sticky top-0 z-30 border-b border-slate-800/90 bg-[#0B1120]/95 backdrop-blur-sm px-4 sm:px-6 py-3">
+        <header className="sticky top-0 z-30 border-b border-border-subtle bg-card/95 backdrop-blur-sm px-4 sm:px-6 py-3 transition-colors duration-200">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(true)}
-                className="lg:hidden rounded-[5px] border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 cursor-pointer"
+                className="lg:hidden rounded-[5px] border border-border-subtle p-1.5 text-heading hover:bg-highlight cursor-pointer"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-4 w-4" />
               </button>
               <div className="min-w-0">
-                <p className="text-xs text-slate-400 truncate">
+                <p className="text-xs text-muted truncate">
                   <span>{section}</span>
-                  <span className="mx-1.5 text-slate-600">/</span>
-                  <span className="text-slate-200 font-medium">{title}</span>
+                  <span className="mx-1.5 opacity-60">/</span>
+                  <span className="text-heading font-medium">{title}</span>
                 </p>
-                <h1 className="text-base sm:text-lg font-semibold tracking-tight text-white truncate">
+                <h1 className="text-base sm:text-lg font-semibold tracking-tight text-heading truncate">
                   {title}
                 </h1>
               </div>
             </div>
 
-            {actions ? (
-              <div className="flex items-center gap-2 shrink-0">{actions}</div>
-            ) : null}
+            <div className="flex items-center gap-2 shrink-0">
+              {actions}
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 

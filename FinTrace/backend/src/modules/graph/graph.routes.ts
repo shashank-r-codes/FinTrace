@@ -5,6 +5,7 @@ import { env } from '../../config/env.js';
 import { recordAuditLog } from '../../middleware/audit.js';
 import { authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import { authorizeOfficer } from '../../middleware/rbac.js';
 import { validate, ValidatedRequest } from '../../middleware/validate.js';
 
 const router = Router();
@@ -65,7 +66,7 @@ async function callMlGraphService<T>(path: string, init?: RequestInit): Promise<
   return (await response.json()) as T;
 }
 
-router.use(authenticate);
+router.use(authenticate, authorizeOfficer);
 
 /**
  * Direct PostgreSQL Recursive CTE multi-hop trace (fast SQL graph traversal).

@@ -1,5 +1,5 @@
 import { BarChart3, Download, FileSpreadsheet, FileText, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -12,10 +12,12 @@ import {
 import { apiDownloadBlob, apiRequest, ApiError } from '../api/client';
 import { EmptyDataState, ErrorDataState } from '../components/common/DataState';
 import { CommandLayout } from '../components/layout/CommandLayout';
+import { useTheme } from '../context/ThemeContext';
 import { ApiSuccessResponse, ComplaintSummary, ReportAnalyticsData } from '../types';
 import { formatFraudType, formatInr } from '../utils/formatters';
 
 export function ReportsAnalyticsPage() {
+  const { theme } = useTheme();
   const [analytics, setAnalytics] = useState<ReportAnalyticsData | null>(null);
   const [complaints, setComplaints] = useState<ComplaintSummary[]>([]);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string>('');
@@ -83,6 +85,11 @@ export function ReportsAnalyticsPage() {
     }
   };
 
+  const selectedComplaint = useMemo(
+    () => complaints.find((c) => c.id === selectedComplaintId) ?? null,
+    [complaints, selectedComplaintId]
+  );
+
   const fraudChartData =
     analytics?.byFraudType.map((row) => ({
       name: formatFraudType(row.fraud_type),
@@ -97,6 +104,32 @@ export function ReportsAnalyticsPage() {
       txns: row.txn_count,
     })) ?? [];
 
+  const chartPalette = useMemo(
+    () =>
+      theme === 'light'
+        ? {
+            grid: '#E2E8F0',
+            tick: '#64748B',
+            axis: '#CBD5E1',
+            tooltipBg: '#FFFFFF',
+            tooltipBorder: '#CBD5E1',
+            tooltipText: '#172B4D',
+            barPrimary: '#3489E8',
+            barSecondary: '#D97706',
+          }
+        : {
+            grid: '#1E293B',
+            tick: '#94A3B8',
+            axis: '#334155',
+            tooltipBg: '#0F172A',
+            tooltipBorder: '#334155',
+            tooltipText: '#F1F5F9',
+            barPrimary: '#38BDF8',
+            barSecondary: '#F59E0B',
+          },
+    [theme]
+  );
+
   return (
     <CommandLayout
       title="Reports & Investigative Analytics"
@@ -105,7 +138,7 @@ export function ReportsAnalyticsPage() {
         <button
           type="button"
           onClick={() => void loadAnalytics()}
-          className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
           Refresh Metrics
@@ -117,43 +150,43 @@ export function ReportsAnalyticsPage() {
       {/* Summary Strip */}
       {analytics ? (
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-            <p className="text-xs text-slate-400">Reported Cybercrime Loss</p>
-            <p className="mt-1.5 font-mono text-xl font-bold text-white tabular-nums">
+          <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+            <p className="text-xs text-muted">Reported Cybercrime Loss</p>
+            <p className="mt-1.5 font-mono text-xl font-bold text-heading tabular-nums">
               {formatInr(analytics.summary.total_reported_loss)}
             </p>
           </div>
-          <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-            <p className="text-xs text-slate-400">Flagged / Frozen Accounts</p>
-            <p className="mt-1.5 font-mono text-xl font-bold text-amber-300 tabular-nums">
+          <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+            <p className="text-xs text-muted">Flagged / Frozen Accounts</p>
+            <p className="mt-1.5 font-mono text-xl font-bold text-[#92400E] dark:text-amber-300 tabular-nums">
               {analytics.summary.flagged_accounts} / {analytics.summary.frozen_accounts} frozen
             </p>
           </div>
-          <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-            <p className="text-xs text-slate-400">ATM Forecasts Logged</p>
-            <p className="mt-1.5 font-mono text-xl font-bold text-sky-300 tabular-nums">
+          <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+            <p className="text-xs text-muted">ATM Forecasts Logged</p>
+            <p className="mt-1.5 font-mono text-xl font-bold text-accent-strong tabular-nums">
               {analytics.summary.total_atm_forecasts}
             </p>
           </div>
-          <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-            <p className="text-xs text-slate-400">Evidence Vault Artifacts</p>
-            <p className="mt-1.5 font-mono text-xl font-bold text-emerald-300 tabular-nums">
+          <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+            <p className="text-xs text-muted">Evidence Vault Artifacts</p>
+            <p className="mt-1.5 font-mono text-xl font-bold text-[#065F46] dark:text-emerald-300 tabular-nums">
               {analytics.summary.total_evidence_records}
             </p>
           </div>
         </section>
       ) : null}
 
-      {/* Export Controls */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] p-4 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+      {/* Export Controls & Dossier Preview */}
+      <section className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle pb-3">
           <div className="flex items-center gap-2">
-            <Download className="h-4 w-4 text-sky-400" aria-hidden="true" />
+            <Download className="h-4 w-4 text-accent-strong" aria-hidden="true" />
             <div>
-              <h2 className="text-sm font-semibold text-white">
+              <h2 className="text-sm font-semibold text-heading">
                 Case Dossier PDF & Regulatory CSV Exports
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 All downloads are generated live from PostgreSQL and recorded in immutable audit logs
               </p>
             </div>
@@ -163,7 +196,7 @@ export function ReportsAnalyticsPage() {
             value={selectedComplaintId}
             onChange={(e) => setSelectedComplaintId(e.target.value)}
             aria-label="Select complaint scope for exports"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs text-slate-100"
+            className="rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs text-heading"
           >
             <option value="">All Complaints (CSV Global Scope)</option>
             {complaints.map((c) => (
@@ -179,7 +212,7 @@ export function ReportsAnalyticsPage() {
             type="button"
             disabled={downloadingKey !== null || !selectedComplaintId}
             onClick={() => void handlePdfDownload()}
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-40 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3.5 py-2 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-40 cursor-pointer"
           >
             <FileText className="h-3.5 w-3.5" aria-hidden="true" />
             {downloadingKey === 'pdf' ? 'Rendering PDF...' : 'Download Case Dossier (PDF)'}
@@ -191,23 +224,40 @@ export function ReportsAnalyticsPage() {
               type="button"
               disabled={downloadingKey !== null}
               onClick={() => void handleCsvDownload(dataset)}
-              className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-subtle px-3 py-2 text-xs font-medium text-heading hover:bg-highlight disabled:opacity-50 cursor-pointer"
             >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+              <FileSpreadsheet className="h-3.5 w-3.5 text-[#10B981]" aria-hidden="true" />
               {downloadingKey === dataset
                 ? 'Exporting...'
                 : `Export ${dataset.charAt(0).toUpperCase() + dataset.slice(1)} CSV`}
             </button>
           ))}
         </div>
+
+        {selectedComplaint ? (
+          <div className="rounded-[5px] border border-border-subtle bg-subtle p-3.5 space-y-1 text-xs">
+            <p className="font-mono text-[11px] font-semibold text-accent-strong">
+              PDF DOSSIER PREVIEW · {selectedComplaint.complaint_number}
+              {selectedComplaint.reference_no ? ` (${selectedComplaint.reference_no})` : ''}
+            </p>
+            <p className="text-heading font-medium">
+              Complainant: {selectedComplaint.victim_name} ·{' '}
+              {formatFraudType(selectedComplaint.fraud_type)} ·{' '}
+              {formatInr(selectedComplaint.reported_amount)}
+            </p>
+            <p className="text-muted">
+              Includes verified transaction hops, flagged mule scores, ATM forecast coordinates, and chain-of-custody SHA-256 hashes.
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {/* Charts */}
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
+        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
-            <BarChart3 className="h-4 w-4 text-sky-400" aria-hidden="true" />
-            <h2 className="text-sm font-semibold text-white">Loss Exposure by Fraud Typology (INR Lakhs)</h2>
+            <BarChart3 className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-heading">Loss Exposure by Fraud Typology (INR Lakhs)</h2>
           </div>
           <div className="h-72">
             {fraudChartData.length === 0 ? (
@@ -215,28 +265,38 @@ export function ReportsAnalyticsPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={fraudChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
-                  <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} unit="L" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: chartPalette.tick, fontSize: 11 }}
+                    axisLine={{ stroke: chartPalette.axis }}
+                  />
+                  <YAxis
+                    tick={{ fill: chartPalette.tick, fontSize: 11 }}
+                    axisLine={{ stroke: chartPalette.axis }}
+                    unit="L"
+                  />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0F172A',
-                      borderColor: '#334155',
+                      backgroundColor: chartPalette.tooltipBg,
+                      borderColor: chartPalette.tooltipBorder,
                       borderRadius: '6px',
                       fontSize: '12px',
+                      color: chartPalette.tooltipText,
                     }}
+                    formatter={(value) => [`₹${Number(value ?? 0)} Lakhs`, 'Loss Exposure']}
                   />
-                  <Bar dataKey="amountLakhs" fill="#38BDF8" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="amountLakhs" fill={chartPalette.barPrimary} radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
+        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
-            <BarChart3 className="h-4 w-4 text-amber-400" aria-hidden="true" />
-            <h2 className="text-sm font-semibold text-white">Transfer Volume by Payment Rail (INR Lakhs)</h2>
+            <BarChart3 className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <h2 className="text-sm font-semibold text-heading">Transfer Volume by Payment Rail (INR Lakhs)</h2>
           </div>
           <div className="h-72">
             {channelChartData.length === 0 ? (
@@ -244,18 +304,28 @@ export function ReportsAnalyticsPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={channelChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
-                  <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} unit="L" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: chartPalette.tick, fontSize: 11 }}
+                    axisLine={{ stroke: chartPalette.axis }}
+                  />
+                  <YAxis
+                    tick={{ fill: chartPalette.tick, fontSize: 11 }}
+                    axisLine={{ stroke: chartPalette.axis }}
+                    unit="L"
+                  />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0F172A',
-                      borderColor: '#334155',
+                      backgroundColor: chartPalette.tooltipBg,
+                      borderColor: chartPalette.tooltipBorder,
                       borderRadius: '6px',
                       fontSize: '12px',
+                      color: chartPalette.tooltipText,
                     }}
+                    formatter={(value) => [`₹${Number(value ?? 0)} Lakhs`, 'Rail Volume']}
                   />
-                  <Bar dataKey="amountLakhs" fill="#F59E0B" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="amountLakhs" fill={chartPalette.barSecondary} radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

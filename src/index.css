@@ -1,17 +1,119 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --bg-app: #F4F8FF;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-subtle: #EDF4FF;
+  --bg-highlight: #DCEEFF;
+  --bg-ai: #E8E5FF;
+  --bg-mint: #D8F8EC;
+
+  --text-heading: #172B4D;
+  --text-body: #334155;
+  --text-muted: #64748B;
+
+  --accent: #60A5FA;
+  --accent-strong: #3489E8;
+  --accent-strong-hover: #2563EB;
+
+  --border-subtle: #CBD5E1;
+  --border-strong: #94A3B8;
+
+  --emerald: #10B981;
+  --risk-critical-bg: #FEE2E2;
+  --risk-critical-text: #991B1B;
+  --risk-critical-marker: #DC2626;
+  --risk-high-bg: #FEF3C7;
+  --risk-high-text: #92400E;
+  --risk-high-marker: #D97706;
+  --risk-medium-bg: #DCEEFF;
+  --risk-medium-text: #1E40AF;
+  --risk-medium-marker: #3489E8;
+  --risk-low-bg: #D8F8EC;
+  --risk-low-text: #065F46;
+  --risk-low-marker: #10B981;
+
+  --scrollbar-track: #EDF4FF;
+  --scrollbar-thumb: #94A3B8;
+  --scrollbar-thumb-hover: #64748B;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg-app: #0B1120;
+  --bg-card: #111827;
+  --bg-sidebar: #090E1A;
+  --bg-subtle: #0F172A;
+  --bg-highlight: #0C4A6E;
+  --bg-ai: #1E1B4B;
+  --bg-mint: #064E3B;
+
+  --text-heading: #F1F5F9;
+  --text-body: #CBD5E1;
+  --text-muted: #94A3B8;
+
+  --accent: #38BDF8;
+  --accent-strong: #0284C7;
+  --accent-strong-hover: #0EA5E9;
+
+  --border-subtle: #1E293B;
+  --border-strong: #334155;
+
+  --emerald: #10B981;
+  --risk-critical-bg: rgba(127, 29, 29, 0.45);
+  --risk-critical-text: #FECACA;
+  --risk-critical-marker: #EF4444;
+  --risk-high-bg: rgba(120, 53, 15, 0.45);
+  --risk-high-text: #FDE68A;
+  --risk-high-marker: #F59E0B;
+  --risk-medium-bg: rgba(12, 74, 110, 0.45);
+  --risk-medium-text: #BAE6FD;
+  --risk-medium-marker: #38BDF8;
+  --risk-low-bg: rgba(6, 78, 59, 0.45);
+  --risk-low-text: #A7F3D0;
+  --risk-low-marker: #10B981;
+
+  --scrollbar-track: #0B1120;
+  --scrollbar-thumb: #334155;
+  --scrollbar-thumb-hover: #475569;
+}
+
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-app: var(--bg-app);
+  --color-card: var(--bg-card);
+  --color-sidebar: var(--bg-sidebar);
+  --color-subtle: var(--bg-subtle);
+  --color-highlight: var(--bg-highlight);
+  --color-ai: var(--bg-ai);
+  --color-mint: var(--bg-mint);
+
+  --color-heading: var(--text-heading);
+  --color-body: var(--text-body);
+  --color-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-strong-hover: var(--accent-strong-hover);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
 }
 
 @layer base {
   html,
   body {
     font-family: var(--font-sans);
-    background-color: #0b1120;
-    color: #f1f5f9;
+    background-color: var(--bg-app);
+    color: var(--text-heading);
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
   .tabular-nums {
@@ -19,20 +121,75 @@
   }
 }
 
+.bg-grad-sky {
+  background-image: linear-gradient(135deg, #DCEEFF, #C7DCFF, #E8E5FF);
+}
+.dark .bg-grad-sky {
+  background-image: linear-gradient(135deg, rgba(14, 116, 144, 0.22), rgba(30, 58, 138, 0.24), rgba(67, 56, 202, 0.2));
+}
+
+.bg-grad-mint {
+  background-image: linear-gradient(135deg, #D8F8EC, #C8F1E7, #DCEEFF);
+}
+.dark .bg-grad-mint {
+  background-image: linear-gradient(135deg, rgba(6, 78, 59, 0.28), rgba(17, 94, 89, 0.24), rgba(12, 74, 110, 0.22));
+}
+
+.bg-grad-ai {
+  background-image: linear-gradient(135deg, #E8E5FF, #DCE5FF, #DBEAFE);
+}
+.dark .bg-grad-ai {
+  background-image: linear-gradient(135deg, rgba(76, 29, 149, 0.25), rgba(49, 46, 129, 0.25), rgba(30, 58, 138, 0.22));
+}
+
+.bg-grad-coral {
+  background-image: linear-gradient(135deg, #FFF1E6, #FFE4E6, #FCE7F3);
+}
+.dark .bg-grad-coral {
+  background-image: linear-gradient(135deg, rgba(124, 45, 18, 0.25), rgba(136, 19, 55, 0.24), rgba(112, 26, 117, 0.2));
+}
+
+/* Themed Leaflet popups and controls */
+.leaflet-container {
+  background: var(--bg-subtle);
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--bg-card) !important;
+  color: var(--text-heading) !important;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2);
+}
+.leaflet-control-attribution {
+  background: var(--bg-card) !important;
+  color: var(--text-muted) !important;
+  opacity: 0.9;
+}
+.leaflet-control-attribution a {
+  color: var(--accent-strong) !important;
+}
+.leaflet-bar a {
+  background-color: var(--bg-card) !important;
+  color: var(--text-heading) !important;
+  border-color: var(--border-subtle) !important;
+}
+.leaflet-bar a:hover {
+  background-color: var(--bg-highlight) !important;
+}
+
+/* Custom subtle scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #0b1120;
+  background: var(--scrollbar-track);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--scrollbar-thumb-hover);
 }

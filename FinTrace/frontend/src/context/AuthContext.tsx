@@ -8,10 +8,20 @@ interface LoginResponseData {
   user: AuthUser;
 }
 
+export interface RegisterCitizenPayload {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  city?: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  registerCitizen: (payload: RegisterCitizenPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
   hasRole: (...allowedRoles: UserRole[]) => boolean;
 }
@@ -44,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void restoreSession();
   }, [restoreSession]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<AuthUser> => {
     const res = await apiRequest<ApiSuccessResponse<LoginResponseData>>('/auth/login', {
       method: 'POST',
       body: { email, password },
@@ -52,6 +62,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     tokenStorage.setTokens(res.data.accessToken, res.data.refreshToken);
     setUser(res.data.user);
+    return res.data.user;
+  }, []);
+
+  const registerCitizen = useCallback(async (payload: RegisterCitizenPayload): Promise<AuthUser> => {
+    const res = await apiRequest<ApiSuccessResponse<LoginResponseData>>('/auth/register-citizen', {
+      method: 'POST',
+      body: payload,
+      skipAuth: true,
+    });
+    tokenStorage.setTokens(res.data.accessToken, res.data.refreshToken);
+    setUser(res.data.user);
+    return res.data.user;
   }, []);
 
   const logout = useCallback(async () => {
@@ -80,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, login, registerCitizen, logout, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,7 +5,7 @@ import { query } from '../../config/db.js';
 import { recordAuditLog } from '../../middleware/audit.js';
 import { authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/errorHandler.js';
-import { authorizeRoles } from '../../middleware/rbac.js';
+import { authorizeOfficer, authorizeRoles } from '../../middleware/rbac.js';
 import { validate, ValidatedRequest } from '../../middleware/validate.js';
 
 const router = Router();
@@ -45,7 +45,7 @@ const createEvidenceSchema = z.object({
     .string()
     .regex(/^[a-fA-F0-9]{64}$/, 'SHA-256 hash must be 64 hexadecimal characters')
     .optional(),
-  metadataJson: z.record(z.unknown()).default({}),
+  metadataJson: z.record(z.string(), z.unknown()).default({}),
 });
 
 const verifyEvidenceSchema = z.object({
@@ -57,7 +57,7 @@ const idParamSchema = z.object({
   id: z.string().uuid(),
 });
 
-router.use(authenticate);
+router.use(authenticate, authorizeOfficer);
 
 router.get(
   '/',
@@ -92,7 +92,7 @@ router.get(
                u.full_name AS uploaded_by_name,
                u.email AS uploaded_by_email
         FROM evidence_records er
-        JOIN investigations inv ON inv.id = er.investigation_id
+        LEFT JOIN investigations inv ON inv.id = er.investigation_id
         JOIN complaints c ON c.id = er.complaint_id
         JOIN users u ON u.id = er.uploaded_by
         ${whereClause}

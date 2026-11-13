@@ -2,7 +2,21 @@ export type UserRole =
   | 'Administrator'
   | 'Senior Investigator'
   | 'Investigator'
+  | 'Bank Nodal Officer'
+  | 'citizen';
+
+export type OfficerRole =
+  | 'Administrator'
+  | 'Senior Investigator'
+  | 'Investigator'
   | 'Bank Nodal Officer';
+
+export type CitizenStatus =
+  | 'Submitted'
+  | 'Under Review'
+  | 'Assigned to Investigator'
+  | 'Investigation in Progress'
+  | 'Action Taken / Closed';
 
 export type ScoreSource =
   | 'Trained ML prediction'
@@ -39,6 +53,7 @@ export interface AuthUser {
   fullName: string;
   role: UserRole;
   institutionId: string | null;
+  phoneMasked?: string | null;
   permissions?: string[];
 }
 
@@ -58,12 +73,14 @@ export interface InvestigatorOption {
 export interface ComplaintSummary {
   id: string;
   complaint_number: string;
+  reference_no?: string;
   fraud_type: FraudType;
   reported_amount: number | string;
   currency: string;
   incident_timestamp: string;
   reported_at: string;
   status: ComplaintStatus;
+  citizen_status?: CitizenStatus;
   priority: ComplaintPriority;
   summary: string;
   city: string;
@@ -77,6 +94,18 @@ export interface ComplaintSummary {
   transaction_count: number;
   atm_prediction_count: number;
   open_alert_count: number;
+}
+
+export interface ComplaintStatusHistoryRow {
+  id: string;
+  complaint_id: string;
+  status: ComplaintStatus;
+  citizen_status: CitizenStatus;
+  public_remark: string | null;
+  internal_note: string | null;
+  changed_by: string | null;
+  changed_by_name?: string | null;
+  changed_at: string;
 }
 
 export interface ComplaintTransactionRow {
@@ -414,6 +443,18 @@ export interface AtmHeatmapRow {
   max_risk_score: number;
   peak_risk_level: RiskLevel;
   peak_window: PredictionWindow;
+  top_linked_accounts?: Array<{
+    account_id: string;
+    account_number: string;
+    holder_name?: string;
+    role?: string;
+    retained_amount?: number;
+    mule_score?: number;
+  }>;
+  top_relevant_paths?: Array<{
+    path: string[];
+    total_amount: number;
+  }>;
   prediction_count: number;
   withdrawal_count: number;
 }
@@ -598,6 +639,62 @@ export interface AuditLogRow {
   ip_address: string | null;
   status_code: number | null;
   details_json: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CitizenComplaintSummary {
+  id: string;
+  reference_no: string;
+  fraud_type: string;
+  reported_amount: number;
+  currency: string;
+  incident_timestamp: string;
+  reported_at: string;
+  citizen_status: CitizenStatus;
+  summary: string;
+  city: string;
+  victim_bank_name: string | null;
+  victim_account_masked: string | null;
+  is_investigator_assigned: boolean;
+  assignment_label: string;
+  transaction_count: number;
+  document_count: number;
+  updated_at: string;
+}
+
+export interface CitizenComplaintDetail extends CitizenComplaintSummary {
+  disputed_transactions: Array<{
+    txn_id: string;
+    date: string;
+    amount: number;
+    channel: string;
+    beneficiary_account_masked: string;
+    beneficiary_bank: string | null;
+  }>;
+  status_history: Array<{
+    id: string;
+    citizen_status: CitizenStatus;
+    public_remark: string | null;
+    changed_at: string;
+  }>;
+  documents: Array<{
+    id: string;
+    title: string;
+    file_name: string | null;
+    mime_type: string | null;
+    file_size: number | null;
+    uploaded_at: string;
+  }>;
+}
+
+export interface CitizenNotificationItem {
+  id: string;
+  complaint_id: string;
+  reference_no: string;
+  title: string;
+  message: string;
+  citizen_status: CitizenStatus;
+  is_read: boolean;
   created_at: string;
 }
 

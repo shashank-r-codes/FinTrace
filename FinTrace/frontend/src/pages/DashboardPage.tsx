@@ -23,6 +23,7 @@ import { ScoreSourceBadge } from '../components/common/ScoreSourceBadge';
 import { StatusSignal } from '../components/common/StatusSignal';
 import { CommandLayout } from '../components/layout/CommandLayout';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   AlertRow,
   AlertStatus,
@@ -35,6 +36,7 @@ import { formatFraudType, formatInr, formatShortTime } from '../utils/formatters
 
 export function DashboardPage() {
   const { hasRole } = useAuth();
+  const { theme } = useTheme();
   const [complaints, setComplaints] = useState<ComplaintSummary[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [predictions, setPredictions] = useState<AtmPredictionRow[]>([]);
@@ -126,6 +128,30 @@ export function DashboardPage() {
 
   const priorityAtms = useMemo(() => predictions.slice(0, 4), [predictions]);
 
+  const chartPalette = useMemo(
+    () =>
+      theme === 'light'
+        ? {
+            grid: '#E2E8F0',
+            tick: '#64748B',
+            axis: '#CBD5E1',
+            tooltipBg: '#FFFFFF',
+            tooltipBorder: '#CBD5E1',
+            tooltipText: '#172B4D',
+            bar: '#3489E8',
+          }
+        : {
+            grid: '#1E293B',
+            tick: '#94A3B8',
+            axis: '#334155',
+            tooltipBg: '#0F172A',
+            tooltipBorder: '#334155',
+            tooltipText: '#F1F5F9',
+            bar: '#38BDF8',
+          },
+    [theme]
+  );
+
   return (
     <CommandLayout
       title="Command Overview"
@@ -135,14 +161,14 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => void loadDashboard()}
-            className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             Refresh
           </button>
           <Link
             to="/complaints"
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover whitespace-nowrap shrink-0"
           >
             Open Complaints Registry
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -152,44 +178,76 @@ export function DashboardPage() {
     >
       {error ? <ErrorDataState message={error} onRetry={() => void loadDashboard()} /> : null}
 
+      {/* Hero Operational Strip */}
+      <section className="rounded-[6px] border border-border-subtle bg-grad-sky px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-strong">
+            Real-Time Cyber-Financial Command Center
+          </p>
+          <p className="text-sm font-medium text-heading mt-0.5">
+            Track multi-hop fund laundering, score mule accounts, and dispatch teams to high-risk ATMs.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <Link
+            to="/map"
+            className="rounded-[5px] border border-border-subtle bg-card/85 px-3 py-1.5 font-medium text-heading hover:bg-card"
+          >
+            Open Live GIS Map
+          </Link>
+          <Link
+            to="/alerts"
+            className="rounded-[5px] bg-accent-strong px-3 py-1.5 font-semibold text-white hover:bg-accent-strong-hover"
+          >
+            Triage Alerts ({metrics.openAlertCount})
+          </Link>
+        </div>
+      </section>
+
       {/* Top 4-metric single-elevation KPI strip */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" aria-label="Key operational metrics">
-        <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-          <p className="text-xs font-medium text-slate-400">Active Cybercrime Cases</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-white tabular-nums">
+        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+          <p className="text-xs font-medium text-muted">Active Cybercrime Cases</p>
+          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
             {loading ? '—' : metrics.activeComplaints}
           </p>
-          <p className="mt-1 text-xs text-slate-400 tabular-nums">
-            Total reported loss: <span className="font-mono text-slate-200">{formatInr(metrics.totalReportedLoss)}</span>
+          <p className="mt-1 text-xs text-muted tabular-nums">
+            Total reported loss: <span className="font-mono text-heading">{formatInr(metrics.totalReportedLoss)}</span>
           </p>
         </div>
 
-        <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-          <p className="text-xs font-medium text-slate-400">Open Early Warning Alerts</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-white tabular-nums">
+        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+          <p className="text-xs font-medium text-muted">Open Early Warning Alerts</p>
+          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
             {loading ? '—' : metrics.openAlertCount}
           </p>
-          <p className="mt-1 text-xs text-slate-400 tabular-nums">
-            Critical priority: <span className="font-mono text-red-400">{metrics.criticalAlerts}</span>
+          <p className="mt-1 text-xs text-muted tabular-nums">
+            Critical priority:{' '}
+            <span className="font-mono font-semibold text-[#991B1B] dark:text-red-400">
+              {metrics.criticalAlerts}
+            </span>
           </p>
         </div>
 
-        <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-          <p className="text-xs font-medium text-slate-400">Imminent ATM Windows (0–12h)</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-white tabular-nums">
+        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+          <p className="text-xs font-medium text-muted">Imminent ATM Windows (0–12h)</p>
+          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
             {loading ? '—' : metrics.imminentAtms}
           </p>
-          <p className="mt-1 text-xs text-slate-400 tabular-nums">
-            Scored terminal forecasts: <span className="font-mono text-sky-300">{metrics.totalPredictions}</span>
+          <p className="mt-1 text-xs text-muted tabular-nums">
+            Scored terminal forecasts:{' '}
+            <span className="font-mono font-semibold text-accent-strong">
+              {metrics.totalPredictions}
+            </span>
           </p>
         </div>
 
-        <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4">
-          <p className="text-xs font-medium text-slate-400">Tracked Ledger Transactions</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-white tabular-nums">
+        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
+          <p className="text-xs font-medium text-muted">Tracked Ledger Transactions</p>
+          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
             {loading ? '—' : txnTotal}
           </p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted">
             PostgreSQL verified edges only
           </p>
         </div>
@@ -197,18 +255,18 @@ export function DashboardPage() {
 
       {/* Main Analytics + Priority Cash-Out ATMs */}
       <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-7 rounded-[6px] border border-slate-800 bg-[#111827] flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div className="xl:col-span-7 rounded-[6px] border border-border-subtle bg-card flex flex-col">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Reported Loss by Fraud Typology</h2>
-              <p className="text-xs text-slate-400">Aggregated from active database complaint records (INR Lakhs)</p>
+              <h2 className="text-sm font-semibold text-heading">Reported Loss by Fraud Typology</h2>
+              <p className="text-xs text-muted">Aggregated from active database complaint records (INR Lakhs)</p>
             </div>
-            <span className="font-mono text-[11px] text-slate-400">n = {complaints.length}</span>
+            <span className="font-mono text-[11px] text-muted">n = {complaints.length}</span>
           </div>
 
           <div className="p-4 h-72">
             {loading ? (
-              <div className="h-full rounded bg-slate-800/40 animate-pulse" />
+              <div className="h-full rounded bg-subtle animate-pulse" />
             ) : chartData.length === 0 ? (
               <EmptyDataState
                 title="No complaint data recorded"
@@ -217,48 +275,48 @@ export function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
                   <XAxis
                     dataKey="fraudType"
-                    tick={{ fill: '#94A3B8', fontSize: 11 }}
-                    axisLine={{ stroke: '#334155' }}
+                    tick={{ fill: chartPalette.tick, fontSize: 11 }}
+                    axisLine={{ stroke: chartPalette.axis }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: '#94A3B8', fontSize: 11 }}
-                    axisLine={{ stroke: '#334155' }}
+                    tick={{ fill: chartPalette.tick, fontSize: 11 }}
+                    axisLine={{ stroke: chartPalette.axis }}
                     tickLine={false}
                     unit="L"
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0F172A',
-                      borderColor: '#334155',
+                      backgroundColor: chartPalette.tooltipBg,
+                      borderColor: chartPalette.tooltipBorder,
                       borderRadius: '6px',
                       fontSize: '12px',
-                      color: '#F1F5F9',
+                      color: chartPalette.tooltipText,
                     }}
                     formatter={(value) => [`₹${Number(value ?? 0)} Lakhs`, 'Reported Loss']}
                   />
-                  <Bar dataKey="lossLakhs" fill="#0EA5E9" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="lossLakhs" fill={chartPalette.bar} radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        <div className="xl:col-span-5 rounded-[6px] border border-slate-800 bg-[#111827] flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div className="xl:col-span-5 rounded-[6px] border border-border-subtle bg-card flex flex-col">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
             <div className="flex items-center gap-2">
-              <Landmark className="h-4 w-4 text-amber-400" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-white">Priority Cash-Out Forecast Queue</h2>
+              <Landmark className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <h2 className="text-sm font-semibold text-heading">Priority Cash-Out Forecast Queue</h2>
             </div>
-            <Link to="/atm-predictions" className="text-xs font-medium text-sky-400 hover:text-sky-300">
+            <Link to="/atm-predictions" className="text-xs font-medium text-accent-strong hover:underline">
               Full Engine
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-800/80 flex-1">
+          <div className="divide-y divide-border-subtle flex-1">
             {loading ? (
               <TableSkeleton rows={4} cols={3} />
             ) : priorityAtms.length === 0 ? (
@@ -268,19 +326,21 @@ export function DashboardPage() {
               />
             ) : (
               priorityAtms.map((pred) => (
-                <div key={pred.id ?? `${pred.atm_id}-${pred.rank_order}`} className="px-4 py-3 space-y-1.5 hover:bg-slate-800/30">
+                <div key={pred.id ?? `${pred.atm_id}-${pred.rank_order}`} className="px-4 py-3 space-y-1.5 hover:bg-subtle">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">
+                      <p className="text-xs font-semibold text-heading truncate">
                         {pred.atm_id} · {pred.bank} ({pred.locality})
                       </p>
-                      <p className="text-[11px] text-slate-400 truncate">
+                      <p className="text-[11px] text-muted truncate">
                         {pred.complaint_number ?? 'Linked Case'} · Window{' '}
-                        <span className="font-mono text-amber-300">{pred.window}</span>
+                        <span className="font-mono font-semibold text-amber-700 dark:text-amber-300">
+                          {pred.window}
+                        </span>
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-mono text-sm font-bold text-white tabular-nums">
+                      <p className="font-mono text-sm font-bold text-heading tabular-nums">
                         {Number(pred.risk_score).toFixed(1)}/100
                       </p>
                       <StatusSignal level={pred.risk_level} />
@@ -288,7 +348,7 @@ export function DashboardPage() {
                   </div>
                   <div className="flex items-center justify-between gap-2 pt-0.5">
                     <ScoreSourceBadge source={pred.score_source} />
-                    <span className="font-mono text-[11px] text-slate-400 tabular-nums">
+                    <span className="font-mono text-[11px] text-muted tabular-nums">
                       Confidence:{' '}
                       {typeof pred.confidence === 'number'
                         ? `${(pred.confidence * 100).toFixed(0)}%`
@@ -300,7 +360,7 @@ export function DashboardPage() {
             )}
           </div>
           {priorityAtms[0]?.limitations_text ? (
-            <div className="border-t border-slate-800 px-4 py-2 text-[11px] text-slate-400">
+            <div className="border-t border-border-subtle bg-subtle px-4 py-2 text-[11px] text-muted">
               Note: {priorityAtms[0].limitations_text}
             </div>
           ) : null}
@@ -309,13 +369,13 @@ export function DashboardPage() {
 
       {/* Bottom: Alert Triage & Recent Complaints */}
       <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-6 rounded-[6px] border border-slate-800 bg-[#111827]">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div className="xl:col-span-6 rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
             <div className="flex items-center gap-2">
-              <BellRing className="h-4 w-4 text-red-400" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-white">Early Warning Alerts</h2>
+              <BellRing className="h-4 w-4 text-[#DC2626] dark:text-red-400" aria-hidden="true" />
+              <h2 className="text-sm font-semibold text-heading">Early Warning Alerts</h2>
             </div>
-            <Link to="/alerts" className="text-xs font-medium text-sky-400 hover:text-sky-300">
+            <Link to="/alerts" className="text-xs font-medium text-accent-strong hover:underline">
               View All
             </Link>
           </div>
@@ -328,24 +388,24 @@ export function DashboardPage() {
               description="Alerts are generated automatically when critical ATM cash-out hotspots or mule bursts are detected."
             />
           ) : (
-            <div className="divide-y divide-slate-800/80">
+            <div className="divide-y divide-border-subtle">
               {alerts.slice(0, 6).map((alert) => (
-                <div key={alert.id} className="px-4 py-3 space-y-2 hover:bg-slate-800/25">
+                <div key={alert.id} className="px-4 py-3 space-y-2 hover:bg-subtle">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <StatusSignal level={alert.severity} />
-                        <span className="text-slate-600">·</span>
-                        <span className="font-mono text-[11px] text-slate-400">
+                        <span className="text-muted">·</span>
+                        <span className="font-mono text-[11px] text-muted">
                           {alert.complaint_number ?? 'System'}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs font-semibold text-slate-100">{alert.title}</p>
-                      <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">{alert.description}</p>
+                      <p className="mt-1 text-xs font-semibold text-heading">{alert.title}</p>
+                      <p className="mt-0.5 text-xs text-body line-clamp-2">{alert.description}</p>
                     </div>
                     <div className="shrink-0 text-right space-y-1">
                       <StatusSignal level={alert.status} />
-                      <p className="font-mono text-[11px] text-slate-500 tabular-nums">
+                      <p className="font-mono text-[11px] text-muted tabular-nums">
                         {formatShortTime(alert.created_at)}
                       </p>
                     </div>
@@ -359,18 +419,18 @@ export function DashboardPage() {
                           type="button"
                           disabled={updatingAlertId === alert.id}
                           onClick={() => void handleAlertStatus(alert.id, 'ACKNOWLEDGED')}
-                          className="inline-flex items-center gap-1 rounded-[4px] border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center gap-1 rounded-[4px] border border-border-subtle bg-card px-2 py-1 text-[11px] font-medium text-heading hover:bg-highlight disabled:opacity-50 cursor-pointer"
                         >
-                          <Check className="h-3 w-3 text-sky-400" aria-hidden="true" />
+                          <Check className="h-3 w-3 text-accent-strong" aria-hidden="true" />
                           Acknowledge
                         </button>
                         <button
                           type="button"
                           disabled={updatingAlertId === alert.id}
                           onClick={() => void handleAlertStatus(alert.id, 'DISPATCHED')}
-                          className="inline-flex items-center gap-1 rounded-[4px] border border-amber-500/40 bg-amber-950/50 px-2 py-1 text-[11px] font-medium text-amber-200 hover:bg-amber-900/50 disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center gap-1 rounded-[4px] border border-amber-300 bg-[#FEF3C7] px-2 py-1 text-[11px] font-semibold text-[#92400E] hover:opacity-90 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-200 disabled:opacity-50 cursor-pointer"
                         >
-                          <Send className="h-3 w-3 text-amber-400" aria-hidden="true" />
+                          <Send className="h-3 w-3" aria-hidden="true" />
                           Dispatch Team
                         </button>
                       </div>
@@ -382,10 +442,10 @@ export function DashboardPage() {
           )}
         </div>
 
-        <div className="xl:col-span-6 rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-            <h2 className="text-sm font-semibold text-white">Recent Cybercrime Complaints</h2>
-            <Link to="/complaints" className="text-xs font-medium text-sky-400 hover:text-sky-300">
+        <div className="xl:col-span-6 rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
+            <h2 className="text-sm font-semibold text-heading">Recent Cybercrime Complaints</h2>
+            <Link to="/complaints" className="text-xs font-medium text-accent-strong hover:underline">
               Manage Cases
             </Link>
           </div>
@@ -400,7 +460,7 @@ export function DashboardPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 bg-[#0F172A] text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <thead className="border-b border-border-subtle bg-highlight text-[11px] font-semibold uppercase tracking-wider text-heading">
                   <tr>
                     <th className="px-4 py-2.5">Case ID</th>
                     <th className="px-4 py-2.5">Victim & Typology</th>
@@ -408,17 +468,17 @@ export function DashboardPage() {
                     <th className="px-4 py-2.5">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-border-subtle">
                   {complaints.slice(0, 6).map((cmp) => (
-                    <tr key={cmp.id} className="hover:bg-slate-800/35">
-                      <td className="px-4 py-2.5 font-mono font-medium text-sky-300 whitespace-nowrap">
+                    <tr key={cmp.id} className="hover:bg-subtle">
+                      <td className="px-4 py-2.5 font-mono font-medium text-accent-strong whitespace-nowrap">
                         {cmp.complaint_number}
                       </td>
                       <td className="px-4 py-2.5">
-                        <p className="font-medium text-slate-100">{cmp.victim_name}</p>
-                        <p className="text-[11px] text-slate-400">{formatFraudType(cmp.fraud_type)}</p>
+                        <p className="font-medium text-heading">{cmp.victim_name}</p>
+                        <p className="text-[11px] text-muted">{formatFraudType(cmp.fraud_type)}</p>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-slate-100 tabular-nums whitespace-nowrap">
+                      <td className="px-4 py-2.5 text-right font-mono text-heading tabular-nums whitespace-nowrap">
                         {formatInr(cmp.reported_amount)}
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap">

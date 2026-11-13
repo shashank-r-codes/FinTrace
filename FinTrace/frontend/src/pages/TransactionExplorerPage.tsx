@@ -206,15 +206,15 @@ export function TransactionExplorerPage() {
               setCsvFile(null);
               setCsvOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <Upload className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+            <Upload className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
             Upload CSV
           </button>
           <button
             type="button"
             onClick={() => setManualOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             Add Transaction
@@ -224,12 +224,27 @@ export function TransactionExplorerPage() {
     >
       {error ? <ErrorDataState message={error} onRetry={() => void fetchTransactions()} /> : null}
 
+      {/* Mint Fresh Explorer Banner */}
+      <section className="rounded-[6px] border border-border-subtle bg-grad-mint px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-[#065F46] dark:text-emerald-300">
+            Bank Ledger & Multi-Rail Ingestion Pipeline
+          </p>
+          <p className="text-xs text-heading">
+            Search verified IMPS, UPI, NEFT, and RTGS transfers or trace any hop directly into the Network Graph.
+          </p>
+        </div>
+        <span className="font-mono text-xs font-semibold text-heading tabular-nums">
+          {total} total records
+        </span>
+      </section>
+
       {/* Filter Bar */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] p-3.5">
+      <section className="rounded-[6px] border border-border-subtle bg-card p-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-center">
           <div className="lg:col-span-2 relative">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted"
               aria-hidden="true"
             />
             <input
@@ -240,7 +255,7 @@ export function TransactionExplorerPage() {
                 setSearch(e.target.value);
               }}
               placeholder="Search TXN ID, account number, or holder..."
-              className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
+              className="w-full rounded-[5px] border border-border-subtle bg-subtle pl-8 pr-3 py-1.5 text-xs text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none"
             />
           </div>
 
@@ -251,7 +266,7 @@ export function TransactionExplorerPage() {
               setComplaintFilter(e.target.value);
             }}
             aria-label="Filter by complaint"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
           >
             <option value="">All Complaints</option>
             {complaints.map((c) => (
@@ -268,7 +283,7 @@ export function TransactionExplorerPage() {
               setChannelFilter(e.target.value);
             }}
             aria-label="Filter by channel"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
           >
             <option value="">All Channels</option>
             {CHANNELS.map((ch) => (
@@ -288,10 +303,10 @@ export function TransactionExplorerPage() {
             }}
             placeholder="Min INR"
             aria-label="Minimum amount in INR"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs font-mono text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
+            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-mono text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none"
           />
 
-          <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-xs text-body cursor-pointer select-none">
             <input
               type="checkbox"
               checked={flaggedOnly}
@@ -299,7 +314,7 @@ export function TransactionExplorerPage() {
                 setOffset(0);
                 setFlaggedOnly(e.target.checked);
               }}
-              className="h-3.5 w-3.5 rounded border-slate-600 bg-[#0B1120] text-sky-500 focus:ring-sky-500"
+              className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong"
             />
             Flagged fraud only
           </label>
@@ -307,16 +322,16 @@ export function TransactionExplorerPage() {
       </section>
 
       {/* Transactions Ledger */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
+      <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-subtle px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-white">Verified Fund-Transfer Ledger</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="text-sm font-semibold text-heading">Verified Fund-Transfer Ledger</h2>
+            <p className="text-xs text-muted">
               Directed account-to-account edges stored in PostgreSQL
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-slate-400 tabular-nums">
+            <span className="font-mono text-xs text-muted tabular-nums">
               {total === 0 ? '0 records' : `${offset + 1}–${Math.min(offset + limit, total)} of ${total}`}
             </span>
             <div className="flex items-center gap-1">
@@ -324,7 +339,7 @@ export function TransactionExplorerPage() {
                 type="button"
                 disabled={offset === 0 || loading}
                 onClick={() => setOffset(Math.max(0, offset - limit))}
-                className="rounded-[4px] border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                className="rounded-[4px] border border-border-subtle bg-card px-2.5 py-1 text-xs text-heading hover:bg-highlight disabled:opacity-40 cursor-pointer"
               >
                 Prev
               </button>
@@ -332,7 +347,7 @@ export function TransactionExplorerPage() {
                 type="button"
                 disabled={offset + limit >= total || loading}
                 onClick={() => setOffset(offset + limit)}
-                className="rounded-[4px] border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                className="rounded-[4px] border border-border-subtle bg-card px-2.5 py-1 text-xs text-heading hover:bg-highlight disabled:opacity-40 cursor-pointer"
               >
                 Next
               </button>
@@ -350,7 +365,7 @@ export function TransactionExplorerPage() {
               <button
                 type="button"
                 onClick={() => setManualOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 Ingest Transaction
@@ -360,7 +375,7 @@ export function TransactionExplorerPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 bg-[#0F172A] text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-border-subtle bg-highlight text-[11px] font-semibold uppercase tracking-wider text-heading">
                 <tr>
                   <th className="px-4 py-2.5">TXN ID & Time</th>
                   <th className="px-4 py-2.5">Source Account</th>
@@ -372,38 +387,38 @@ export function TransactionExplorerPage() {
                   <th className="px-4 py-2.5 text-right">Graph</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-border-subtle">
                 {transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-800/35">
+                  <tr key={tx.id} className="hover:bg-subtle">
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      <p className="font-mono font-semibold text-sky-300">{tx.txn_id}</p>
-                      <p className="font-mono text-[11px] text-slate-400 tabular-nums">
+                      <p className="font-mono font-semibold text-accent-strong">{tx.txn_id}</p>
+                      <p className="font-mono text-[11px] text-muted tabular-nums">
                         {formatTimestamp(tx.timestamp)}
                       </p>
                     </td>
                     <td className="px-4 py-2.5">
-                      <p className="font-mono text-slate-100">{tx.from_account_number}</p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="font-mono text-heading">{tx.from_account_number}</p>
+                      <p className="text-[11px] text-muted">
                         {tx.from_holder} · {tx.from_city}
                       </p>
                     </td>
                     <td className="px-4 py-2.5">
-                      <p className="font-mono text-slate-100">{tx.to_account_number}</p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="font-mono text-heading">{tx.to_account_number}</p>
+                      <p className="text-[11px] text-muted">
                         {tx.to_holder} · {tx.to_city}
                       </p>
                     </td>
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className="font-mono text-slate-200">{tx.channel}</span>
-                      <span className="mx-1.5 text-slate-600">·</span>
-                      <span className="font-mono text-slate-400">
+                      <span className="font-mono text-heading">{tx.channel}</span>
+                      <span className="mx-1.5 text-muted">·</span>
+                      <span className="font-mono text-muted">
                         Hop {tx.hop_depth ?? '—'}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-slate-300 whitespace-nowrap">
+                    <td className="px-4 py-2.5 font-mono text-body whitespace-nowrap">
                       {tx.complaint_number ?? 'Unlinked'}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-white tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-heading tabular-nums whitespace-nowrap">
                       {formatInr(tx.amount)}
                     </td>
                     <td className="px-4 py-2.5 whitespace-nowrap">
@@ -416,9 +431,9 @@ export function TransactionExplorerPage() {
                     <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <Link
                         to={`/graph?accountId=${encodeURIComponent(tx.from_account)}`}
-                        className="inline-flex items-center gap-1 rounded-[4px] border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] font-medium text-slate-200 hover:border-sky-500/50 hover:text-white"
+                        className="inline-flex items-center gap-1 rounded-[4px] border border-border-subtle bg-subtle px-2 py-1 text-[11px] font-medium text-heading hover:bg-highlight"
                       >
-                        <GitFork className="h-3 w-3 text-sky-400" aria-hidden="true" />
+                        <GitFork className="h-3 w-3 text-accent-strong" aria-hidden="true" />
                         Trace
                       </Link>
                     </td>
@@ -432,14 +447,14 @@ export function TransactionExplorerPage() {
 
       {/* Manual Transaction Modal */}
       {manualOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
-          <div className="w-full max-w-xl rounded-[8px] border border-slate-700 bg-[#111827] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3.5">
-              <h2 className="text-sm font-semibold text-white">Ingest Single Transaction</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="w-full max-w-xl rounded-[8px] border border-border-subtle bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-5 py-3.5">
+              <h2 className="text-sm font-semibold text-heading">Ingest Single Transaction</h2>
               <button
                 type="button"
                 onClick={() => setManualOpen(false)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                className="rounded p-1 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
                 aria-label="Close modal"
               >
                 <X className="h-4 w-4" />
@@ -459,7 +474,7 @@ export function TransactionExplorerPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-body mb-1">
                     Source Account (Number or UUID)
                   </label>
                   <input
@@ -469,11 +484,11 @@ export function TransactionExplorerPage() {
                     value={fromAccount}
                     onChange={(e) => setFromAccount(e.target.value)}
                     placeholder="e.g. SYNVICT00001"
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-body mb-1">
                     Destination Account (Number or UUID)
                   </label>
                   <input
@@ -483,14 +498,14 @@ export function TransactionExplorerPage() {
                     value={toAccount}
                     onChange={(e) => setToAccount(e.target.value)}
                     placeholder="e.g. SYNMULE00100"
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Amount (INR)</label>
+                  <label className="block text-xs font-medium text-body mb-1">Amount (INR)</label>
                   <input
                     type="number"
                     required
@@ -498,15 +513,15 @@ export function TransactionExplorerPage() {
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Payment Rail</label>
+                  <label className="block text-xs font-medium text-body mb-1">Payment Rail</label>
                   <select
                     value={channel}
                     onChange={(e) => setChannel(e.target.value as (typeof CHANNELS)[number])}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                   >
                     {CHANNELS.map((ch) => (
                       <option key={ch} value={ch}>
@@ -516,35 +531,35 @@ export function TransactionExplorerPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Hop Depth</label>
+                  <label className="block text-xs font-medium text-body mb-1">Hop Depth</label>
                   <input
                     type="number"
                     min={0}
                     max={20}
                     value={hopDepth}
                     onChange={(e) => setHopDepth(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Timestamp</label>
+                  <label className="block text-xs font-medium text-body mb-1">Timestamp</label>
                   <input
                     type="datetime-local"
                     required
                     value={timestamp}
                     onChange={(e) => setTimestamp(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Link Complaint</label>
+                  <label className="block text-xs font-medium text-body mb-1">Link Complaint</label>
                   <select
                     value={complaintId}
                     onChange={(e) => setComplaintId(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                   >
                     <option value="">Unlinked / Background</option>
                     {complaints.map((c) => (
@@ -557,38 +572,38 @@ export function TransactionExplorerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Remarks</label>
+                <label className="block text-xs font-medium text-body mb-1">Remarks</label>
                 <input
                   type="text"
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder="Optional bank statement reference or investigator note"
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-body cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isFlaggedFraud}
                   onChange={(e) => setIsFlaggedFraud(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-slate-600 bg-[#0B1120] text-sky-500"
+                  className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong"
                 />
                 Flag transaction as part of suspected fraud chain
               </label>
 
-              <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-4">
+              <div className="flex items-center justify-end gap-2 border-t border-border-subtle pt-4">
                 <button
                   type="button"
                   onClick={() => setManualOpen(false)}
-                  className="rounded-[5px] border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 cursor-pointer"
+                  className="rounded-[5px] border border-border-subtle bg-subtle px-3.5 py-1.5 text-xs font-medium text-body hover:bg-highlight cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={manualSubmitting}
-                  className="rounded-[5px] bg-sky-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-50 cursor-pointer"
+                  className="rounded-[5px] bg-accent-strong px-4 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer"
                 >
                   {manualSubmitting ? 'Recording...' : 'Record Transaction'}
                 </button>
@@ -600,17 +615,17 @@ export function TransactionExplorerPage() {
 
       {/* CSV Upload Modal */}
       {csvOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
-          <div className="w-full max-w-xl rounded-[8px] border border-slate-700 bg-[#111827] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="w-full max-w-xl rounded-[8px] border border-border-subtle bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-5 py-3.5">
               <div className="flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4 text-sky-400" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-white">Bulk CSV Transaction Ingestion</h2>
+                <FileSpreadsheet className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+                <h2 className="text-sm font-semibold text-heading">Bulk CSV Transaction Ingestion</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setCsvOpen(false)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                className="rounded p-1 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
                 aria-label="Close modal"
               >
                 <X className="h-4 w-4" />
@@ -620,64 +635,73 @@ export function TransactionExplorerPage() {
             <form onSubmit={handleCsvSubmit} className="p-5 space-y-4">
               {csvError ? <ErrorDataState message={csvError} /> : null}
 
-              <div className="rounded-[5px] border border-slate-800 bg-[#0B1120] p-3 space-y-2">
+              <div className="rounded-[5px] border border-border-subtle bg-subtle p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-200">Required CSV Columns</p>
+                  <p className="text-xs font-semibold text-heading">Required CSV Columns</p>
                   <button
                     type="button"
                     onClick={downloadCsvTemplate}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 hover:text-sky-300 cursor-pointer"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-accent-strong hover:underline cursor-pointer"
                   >
                     <Download className="h-3 w-3" aria-hidden="true" />
                     Download Template
                   </button>
                 </div>
-                <p className="font-mono text-[11px] text-slate-400 break-all">
+                <p className="font-mono text-[11px] text-muted break-all">
                   txn_id,from_account,to_account,amount,timestamp,channel,complaint_number,hop_depth,is_flagged_fraud,remarks
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-body mb-1.5">
                   Select Statement CSV (max 5,000 rows, 5 MB)
                 </label>
                 <input
                   type="file"
                   accept=".csv,text/csv"
                   onChange={handleCsvFileChange}
-                  className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-[4px] file:border file:border-slate-700 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-200 hover:file:bg-slate-800"
+                  className="block w-full text-xs text-body file:mr-3 file:rounded-[4px] file:border file:border-border-subtle file:bg-subtle file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-heading hover:file:bg-highlight"
                 />
               </div>
 
               {csvReport ? (
-                <div className="rounded-[6px] border border-slate-800 bg-[#0B1120] p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                <div className="rounded-[6px] border border-border-subtle bg-subtle p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#065F46] dark:text-emerald-400">
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                     Validation & Ingestion Summary
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs tabular-nums">
-                    <div className="rounded bg-slate-900 p-2">
-                      <p className="text-[10px] text-slate-400">Total</p>
-                      <p className="font-bold text-white">{csvReport.totalRows}</p>
+                    <div className="rounded bg-card border border-border-subtle p-2">
+                      <p className="text-[10px] text-muted">Total</p>
+                      <p className="font-bold text-heading">{csvReport.totalRows}</p>
                     </div>
-                    <div className="rounded bg-slate-900 p-2">
-                      <p className="text-[10px] text-slate-400">Inserted</p>
-                      <p className="font-bold text-emerald-400">{csvReport.inserted}</p>
+                    <div className="rounded bg-card border border-border-subtle p-2">
+                      <p className="text-[10px] text-muted">Inserted</p>
+                      <p className="font-bold text-[#065F46] dark:text-emerald-400">
+                        {csvReport.inserted}
+                      </p>
                     </div>
-                    <div className="rounded bg-slate-900 p-2">
-                      <p className="text-[10px] text-slate-400">Duplicates</p>
-                      <p className="font-bold text-amber-300">{csvReport.skippedDuplicates}</p>
+                    <div className="rounded bg-card border border-border-subtle p-2">
+                      <p className="text-[10px] text-muted">Duplicates</p>
+                      <p className="font-bold text-[#92400E] dark:text-amber-300">
+                        {csvReport.skippedDuplicates}
+                      </p>
                     </div>
-                    <div className="rounded bg-slate-900 p-2">
-                      <p className="text-[10px] text-slate-400">Errors</p>
-                      <p className="font-bold text-red-400">{csvReport.errors.length}</p>
+                    <div className="rounded bg-card border border-border-subtle p-2">
+                      <p className="text-[10px] text-muted">Errors</p>
+                      <p className="font-bold text-[#991B1B] dark:text-red-400">
+                        {csvReport.errors.length}
+                      </p>
                     </div>
                   </div>
 
                   {csvReport.errors.length > 0 ? (
-                    <div className="max-h-36 overflow-y-auto divide-y divide-slate-800 border border-slate-800 rounded">
+                    <div className="max-h-36 overflow-y-auto divide-y divide-border-subtle border border-border-subtle rounded bg-card">
                       {csvReport.errors.map((errItem, idx) => (
-                        <div key={idx} className="px-3 py-1.5 text-[11px] text-red-300 font-mono">
+                        <div
+                          key={idx}
+                          className="px-3 py-1.5 text-[11px] text-[#991B1B] dark:text-red-300 font-mono"
+                        >
                           Row {errItem.row}: {errItem.error}
                         </div>
                       ))}
@@ -686,18 +710,18 @@ export function TransactionExplorerPage() {
                 </div>
               ) : null}
 
-              <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-4">
+              <div className="flex items-center justify-end gap-2 border-t border-border-subtle pt-4">
                 <button
                   type="button"
                   onClick={() => setCsvOpen(false)}
-                  className="rounded-[5px] border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 cursor-pointer"
+                  className="rounded-[5px] border border-border-subtle bg-subtle px-3.5 py-1.5 text-xs font-medium text-body hover:bg-highlight cursor-pointer"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
                   disabled={!csvFile || csvSubmitting}
-                  className="rounded-[5px] bg-sky-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-50 cursor-pointer"
+                  className="rounded-[5px] bg-accent-strong px-4 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer"
                 >
                   {csvSubmitting ? 'Validating & Importing...' : 'Upload & Validate CSV'}
                 </button>

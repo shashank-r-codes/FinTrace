@@ -5,7 +5,9 @@ import {
   AtmPredictionSeed,
   AtmSeed,
   AtmWithdrawalSeed,
+  CitizenNotificationSeed,
   ComplaintSeed,
+  ComplaintStatusHistorySeed,
   EvidenceSeed,
   generateSyntheticDataset,
   InstitutionSeed,
@@ -87,9 +89,21 @@ export interface StoredInvestigation {
   updated_at: string;
 }
 
-export interface StoredEvidence extends Omit<EvidenceSeed, 'file_name'> {
+export interface StoredEvidence extends Omit<EvidenceSeed, 'file_name' | 'investigation_id'> {
+  investigation_id: string | null;
   file_name: string | null;
+  mime_type?: string | null;
+  file_size?: number | null;
+  is_citizen_visible?: boolean;
   recorded_at: string;
+}
+
+export interface StoredComplaintStatusHistory extends Omit<ComplaintStatusHistorySeed, 'changed_at'> {
+  changed_at: string;
+}
+
+export interface StoredCitizenNotification extends Omit<CitizenNotificationSeed, 'created_at'> {
+  created_at: string;
 }
 
 export interface ShapFactor {
@@ -200,6 +214,8 @@ export interface FinTraceStore {
   fraudResults: StoredFraudResult[];
   modelMetrics: StoredModelMetrics[];
   auditLogs: StoredAuditLog[];
+  complaintStatusHistory: StoredComplaintStatusHistory[];
+  citizenNotifications: StoredCitizenNotification[];
 }
 
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -313,6 +329,14 @@ function createInitialStore(): FinTraceStore {
     evidenceRecords,
     fraudResults: [],
     modelMetrics: [],
+    complaintStatusHistory: seed.complaintStatusHistory.map((h) => ({
+      ...h,
+      changed_at: h.changed_at.toISOString(),
+    })),
+    citizenNotifications: seed.citizenNotifications.map((n) => ({
+      ...n,
+      created_at: n.created_at.toISOString(),
+    })),
     auditLogs: [
       {
         id: crypto.randomUUID(),

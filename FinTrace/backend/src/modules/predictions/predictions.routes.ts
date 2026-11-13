@@ -5,7 +5,7 @@ import { env } from '../../config/env.js';
 import { recordAuditLog } from '../../middleware/audit.js';
 import { authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/errorHandler.js';
-import { authorizeRoles } from '../../middleware/rbac.js';
+import { authorizeOfficer, authorizeRoles } from '../../middleware/rbac.js';
 import { validate, ValidatedRequest } from '../../middleware/validate.js';
 
 export const atmsRouter = Router();
@@ -41,8 +41,8 @@ const listPredictionsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
-atmsRouter.use(authenticate);
-predictionsRouter.use(authenticate);
+atmsRouter.use(authenticate, authorizeOfficer);
+predictionsRouter.use(authenticate, authorizeOfficer);
 
 atmsRouter.get(
   '/',
@@ -305,6 +305,8 @@ predictionsRouter.get('/atm/heatmap', async (_req, res, next) => {
                (ARRAY_AGG(ap."window" ORDER BY ap.risk_score DESC))[1],
                '>24h'
              ) AS peak_window,
+             (ARRAY_AGG(ap.linked_accounts_json ORDER BY ap.risk_score DESC))[1] AS top_linked_accounts,
+             (ARRAY_AGG(ap.relevant_paths_json ORDER BY ap.risk_score DESC))[1] AS top_relevant_paths,
              COUNT(ap.id)::int AS prediction_count,
              COUNT(aw.id)::int AS withdrawal_count
       FROM atms a

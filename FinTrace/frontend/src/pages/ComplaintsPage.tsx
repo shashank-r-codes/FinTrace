@@ -11,6 +11,7 @@ import {
   AtmPredictionRow,
   ComplaintPriority,
   ComplaintStatus,
+  ComplaintStatusHistoryRow,
   ComplaintSummary,
   ComplaintTransactionRow,
   FraudType,
@@ -29,6 +30,7 @@ interface ComplaintDetailData {
   transactions: ComplaintTransactionRow[];
   suspiciousAccounts: SuspiciousAccountRow[];
   atmPredictions: AtmPredictionRow[];
+  statusHistory?: ComplaintStatusHistoryRow[];
 }
 
 const FRAUD_TYPES: FraudType[] = [
@@ -90,6 +92,9 @@ export function ComplaintsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
   const [nextStatus, setNextStatus] = useState<ComplaintStatus>('TRACING');
+  const [nextAssignedTo, setNextAssignedTo] = useState<string>('');
+  const [publicRemark, setPublicRemark] = useState('');
+  const [internalNote, setInternalNote] = useState('');
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
@@ -130,6 +135,9 @@ export function ComplaintsPage() {
       const res = await apiRequest<ApiSuccessResponse<ComplaintDetailData>>(`/complaints/${id}`);
       setDetail(res.data);
       setNextStatus(res.data.complaint.status);
+      setNextAssignedTo(res.data.complaint.investigator_id ?? '');
+      setPublicRemark('');
+      setInternalNote('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to load complaint detail.');
       setSelectedId(null);
@@ -181,7 +189,12 @@ export function ComplaintsPage() {
     try {
       await apiRequest(`/complaints/${selectedId}/status`, {
         method: 'PATCH',
-        body: { status: nextStatus },
+        body: {
+          status: nextStatus,
+          assignedTo: nextAssignedTo || null,
+          publicRemark: publicRemark.trim() || undefined,
+          internalNote: internalNote.trim() || undefined,
+        },
       });
       await openComplaintDetail(selectedId);
       await fetchComplaints();
@@ -201,7 +214,7 @@ export function ComplaintsPage() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover whitespace-nowrap shrink-0 cursor-pointer transition-colors"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             Register Complaint
@@ -212,11 +225,11 @@ export function ComplaintsPage() {
       {error ? <ErrorDataState message={error} onRetry={() => void fetchComplaints()} /> : null}
 
       {/* Filter Bar */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] p-3.5">
+      <section className="rounded-[6px] border border-border-subtle bg-card p-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="lg:col-span-2 relative">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted"
               aria-hidden="true"
             />
             <input
@@ -224,7 +237,7 @@ export function ComplaintsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search complaint ID, victim, or summary..."
-              className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
+              className="w-full rounded-[5px] border border-border-subtle bg-app pl-8 pr-3 py-1.5 text-xs text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none"
             />
           </div>
 
@@ -232,7 +245,7 @@ export function ComplaintsPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Filter by complaint status"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+            className="rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
           >
             <option value="">All Statuses</option>
             {COMPLAINT_STATUSES.map((st) => (
@@ -246,7 +259,7 @@ export function ComplaintsPage() {
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             aria-label="Filter by priority"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+            className="rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
           >
             <option value="">All Priorities</option>
             {PRIORITIES.map((p) => (
@@ -260,7 +273,7 @@ export function ComplaintsPage() {
             value={fraudFilter}
             onChange={(e) => setFraudFilter(e.target.value)}
             aria-label="Filter by fraud type"
-            className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-200 focus:border-sky-500 focus:outline-none"
+            className="rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
           >
             <option value="">All Fraud Types</option>
             {FRAUD_TYPES.map((ft) => (
@@ -273,10 +286,10 @@ export function ComplaintsPage() {
       </section>
 
       {/* Complaints Table */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-          <h2 className="text-sm font-semibold text-white">Cybercrime Complaints Ledger</h2>
-          <span className="font-mono text-xs text-slate-400 tabular-nums">
+      <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border-subtle bg-highlight/60 px-4 py-3">
+          <h2 className="text-sm font-semibold text-heading">Cybercrime Complaints Ledger</h2>
+          <span className="font-mono text-xs text-muted tabular-nums">
             Showing {complaints.length} of {total}
           </span>
         </div>
@@ -292,7 +305,7 @@ export function ComplaintsPage() {
                 <button
                   type="button"
                   onClick={() => setCreateOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                   Register First Complaint
@@ -303,7 +316,7 @@ export function ComplaintsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 bg-[#0F172A] text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-border-subtle bg-highlight/45 text-[11px] font-semibold uppercase tracking-wider text-muted">
                 <tr>
                   <th className="px-4 py-2.5">Case ID</th>
                   <th className="px-4 py-2.5">Victim</th>
@@ -316,22 +329,27 @@ export function ComplaintsPage() {
                   <th className="px-4 py-2.5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-border-subtle">
                 {complaints.map((cmp) => (
-                  <tr key={cmp.id} className="hover:bg-slate-800/35">
-                    <td className="px-4 py-3 font-mono font-semibold text-sky-300 whitespace-nowrap">
-                      {cmp.complaint_number}
+                  <tr key={cmp.id} className="hover:bg-subtle/60 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="font-mono font-semibold text-accent-strong dark:text-sky-300">
+                        {cmp.complaint_number}
+                      </p>
+                      {cmp.reference_no ? (
+                        <p className="font-mono text-[10px] text-muted">{cmp.reference_no}</p>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-100">{cmp.victim_name}</p>
-                      <p className="font-mono text-[11px] text-slate-400">
+                      <p className="font-medium text-heading">{cmp.victim_name}</p>
+                      <p className="font-mono text-[11px] text-muted">
                         {cmp.victim_phone} · {cmp.city}
                       </p>
                     </td>
-                    <td className="px-4 py-3 text-slate-200 whitespace-nowrap">
+                    <td className="px-4 py-3 text-body whitespace-nowrap">
                       {formatFraudType(cmp.fraud_type)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-medium text-white tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-3 text-right font-mono font-medium text-heading tabular-nums whitespace-nowrap">
                       {formatInr(cmp.reported_amount)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -340,19 +358,19 @@ export function ComplaintsPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <StatusSignal level={cmp.status} />
                     </td>
-                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
+                    <td className="px-4 py-3 text-body whitespace-nowrap">
                       {cmp.investigator_name ?? 'Unassigned'}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-[11px] text-slate-400 tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-3 text-right font-mono text-[11px] text-muted tabular-nums whitespace-nowrap">
                       {cmp.transaction_count} tx · {cmp.atm_prediction_count} ATM · {cmp.open_alert_count} alert
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => void openComplaintDetail(cmp.id)}
-                        className="inline-flex items-center gap-1 rounded-[4px] border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-200 hover:border-sky-500/50 hover:text-white cursor-pointer"
+                        className="inline-flex items-center gap-1 rounded-[4px] border border-border-subtle bg-subtle px-2.5 py-1 text-[11px] font-medium text-heading hover:bg-highlight cursor-pointer transition-colors"
                       >
-                        <Eye className="h-3 w-3 text-sky-400" aria-hidden="true" />
+                        <Eye className="h-3 w-3 text-accent-strong" aria-hidden="true" />
                         Inspect
                       </button>
                     </td>
@@ -367,13 +385,13 @@ export function ComplaintsPage() {
       {/* Register Complaint Modal */}
       {createOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-[8px] border border-slate-700 bg-[#111827] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3.5">
-              <h2 className="text-sm font-semibold text-white">Register Cybercrime Complaint</h2>
+          <div className="w-full max-w-2xl rounded-[8px] border border-border-subtle bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-highlight/50 px-5 py-3.5">
+              <h2 className="text-sm font-semibold text-heading">Register Cybercrime Complaint</h2>
               <button
                 type="button"
                 onClick={() => setCreateOpen(false)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                className="rounded p-1 text-muted hover:bg-subtle hover:text-heading cursor-pointer"
                 aria-label="Close modal"
               >
                 <X className="h-4 w-4" />
@@ -385,57 +403,57 @@ export function ComplaintsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Victim Full Name</label>
+                  <label className="block text-xs font-medium text-body mb-1">Victim Full Name</label>
                   <input
                     type="text"
                     required
                     minLength={2}
                     value={victimName}
                     onChange={(e) => setVictimName(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                     placeholder="e.g. Siddharth Hegde"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Masked Phone</label>
+                  <label className="block text-xs font-medium text-body mb-1">Masked Phone</label>
                   <input
                     type="text"
                     required
                     minLength={6}
                     value={victimPhone}
                     onChange={(e) => setVictimPhone(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Victim Email (optional)</label>
+                  <label className="block text-xs font-medium text-body mb-1">Victim Email (optional)</label>
                   <input
                     type="email"
                     value={victimEmail}
                     onChange={(e) => setVictimEmail(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                     placeholder="victim@example.in"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">City</label>
+                    <label className="block text-xs font-medium text-body mb-1">City</label>
                     <input
                       type="text"
                       required
                       value={victimCity}
                       onChange={(e) => setVictimCity(e.target.value)}
-                      className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                      className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">State</label>
+                    <label className="block text-xs font-medium text-body mb-1">State</label>
                     <input
                       type="text"
                       required
                       value={victimState}
                       onChange={(e) => setVictimState(e.target.value)}
-                      className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                      className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                     />
                   </div>
                 </div>
@@ -443,11 +461,11 @@ export function ComplaintsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Fraud Typology</label>
+                  <label className="block text-xs font-medium text-body mb-1">Fraud Typology</label>
                   <select
                     value={fraudType}
                     onChange={(e) => setFraudType(e.target.value as FraudType)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                   >
                     {FRAUD_TYPES.map((ft) => (
                       <option key={ft} value={ft}>
@@ -458,23 +476,23 @@ export function ComplaintsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Reported Loss (INR)</label>
+                  <label className="block text-xs font-medium text-body mb-1">Reported Loss (INR)</label>
                   <input
                     type="number"
                     required
                     min={100}
                     value={reportedAmount}
                     onChange={(e) => setReportedAmount(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Priority</label>
+                  <label className="block text-xs font-medium text-body mb-1">Priority</label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as ComplaintPriority)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                   >
                     {PRIORITIES.map((p) => (
                       <option key={p} value={p}>
@@ -487,21 +505,21 @@ export function ComplaintsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Incident Timestamp</label>
+                  <label className="block text-xs font-medium text-body mb-1">Incident Timestamp</label>
                   <input
                     type="datetime-local"
                     required
                     value={incidentTimestamp}
                     onChange={(e) => setIncidentTimestamp(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Assign Lead Investigator</label>
+                  <label className="block text-xs font-medium text-body mb-1">Assign Lead Investigator</label>
                   <select
                     value={assignedTo}
                     onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
                   >
                     <option value="">Unassigned (Queue)</option>
                     {investigators.map((inv) => (
@@ -514,7 +532,7 @@ export function ComplaintsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Incident Summary</label>
+                <label className="block text-xs font-medium text-body mb-1">Incident Summary</label>
                 <textarea
                   required
                   minLength={10}
@@ -522,22 +540,22 @@ export function ComplaintsPage() {
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   placeholder="Describe payment vectors, suspicious beneficiary identifiers, and initial timeline..."
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-2 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                  className="w-full rounded-[5px] border border-border-subtle bg-app px-3 py-2 text-xs text-heading focus:border-accent-strong focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-4">
+              <div className="flex items-center justify-end gap-2 border-t border-border-subtle pt-4">
                 <button
                   type="button"
                   onClick={() => setCreateOpen(false)}
-                  className="rounded-[5px] border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 cursor-pointer"
+                  className="rounded-[5px] border border-border-subtle bg-subtle px-3.5 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-[5px] bg-sky-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-50 cursor-pointer"
+                  className="rounded-[5px] bg-accent-strong px-4 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? 'Submitting...' : 'Create Complaint & Open Case'}
                 </button>
@@ -550,12 +568,17 @@ export function ComplaintsPage() {
       {/* Complaint Inspection Drawer */}
       {selectedId ? (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/70">
-          <div className="w-full max-w-3xl bg-[#0F172A] border-l border-slate-800 h-full overflow-y-auto p-5 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
+          <div className="w-full max-w-3xl bg-app border-l border-border-subtle h-full overflow-y-auto p-5 space-y-5">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3.5">
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-slate-400">Case Inspection Dossier</p>
-                <h2 className="font-mono text-base font-bold text-white">
+                <p className="text-[11px] uppercase tracking-wider text-muted">Case Inspection Dossier</p>
+                <h2 className="font-mono text-base font-bold text-heading">
                   {detail?.complaint.complaint_number ?? 'Loading...'}
+                  {detail?.complaint.reference_no ? (
+                    <span className="ml-2 text-xs font-normal text-accent-strong">
+                      ({detail.complaint.reference_no})
+                    </span>
+                  ) : null}
                 </h2>
               </div>
               <button
@@ -564,7 +587,7 @@ export function ComplaintsPage() {
                   setSelectedId(null);
                   setDetail(null);
                 }}
-                className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                className="rounded p-1.5 text-muted hover:bg-subtle hover:text-heading cursor-pointer"
                 aria-label="Close dossier"
               >
                 <X className="h-4 w-4" />
@@ -575,80 +598,171 @@ export function ComplaintsPage() {
               <TableSkeleton rows={6} cols={4} />
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-[6px] border border-slate-800 bg-[#111827] p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-[6px] border border-border-subtle bg-card p-4">
                   <div>
-                    <p className="text-[11px] text-slate-400">Victim & Contact</p>
-                    <p className="mt-1 text-xs font-semibold text-white">{detail.complaint.victim_name}</p>
-                    <p className="font-mono text-[11px] text-slate-400">
+                    <p className="text-[11px] text-muted">Victim & Contact</p>
+                    <p className="mt-1 text-xs font-semibold text-heading">{detail.complaint.victim_name}</p>
+                    <p className="font-mono text-[11px] text-muted">
                       {detail.complaint.victim_phone} · {detail.complaint.victim_city}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-400">Typology & Reported Loss</p>
-                    <p className="mt-1 text-xs font-semibold text-white">
+                    <p className="text-[11px] text-muted">Typology & Reported Loss</p>
+                    <p className="mt-1 text-xs font-semibold text-heading">
                       {formatFraudType(detail.complaint.fraud_type)}
                     </p>
-                    <p className="font-mono text-xs text-sky-300 tabular-nums">
+                    <p className="font-mono text-xs font-semibold text-accent-strong tabular-nums">
                       {formatInr(detail.complaint.reported_amount)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-400">Incident Time</p>
-                    <p className="mt-1 font-mono text-xs text-slate-200 tabular-nums">
+                    <p className="text-[11px] text-muted">Incident Time</p>
+                    <p className="mt-1 font-mono text-xs text-heading tabular-nums">
                       {formatTimestamp(detail.complaint.incident_timestamp)}
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-muted">
                       Lead: {detail.complaint.investigator_name ?? 'Unassigned'}
                     </p>
                   </div>
-                  <div className="sm:col-span-3 border-t border-slate-800 pt-3">
-                    <p className="text-[11px] text-slate-400 mb-1">Complaint Narrative</p>
-                    <p className="text-xs text-slate-200 leading-relaxed">{detail.complaint.summary}</p>
+                  <div className="sm:col-span-3 border-t border-border-subtle pt-3">
+                    <p className="text-[11px] text-muted mb-1">Complaint Narrative</p>
+                    <p className="text-xs text-body leading-relaxed">{detail.complaint.summary}</p>
                   </div>
                 </div>
 
                 {canCreateOrEdit ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-slate-800 bg-[#111827] px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">Current Stage:</span>
-                      <StatusSignal level={detail.complaint.status} />
+                  <div className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">Current Stage:</span>
+                        <StatusSignal level={detail.complaint.status} />
+                        {detail.complaint.citizen_status ? (
+                          <span className="rounded-[4px] border border-border-subtle bg-highlight px-2 py-0.5 text-[11px] font-medium text-heading">
+                            Citizen View: {detail.complaint.citizen_status}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={nextStatus}
-                        onChange={(e) => setNextStatus(e.target.value as ComplaintStatus)}
-                        className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1 text-xs text-slate-100"
-                      >
-                        {COMPLAINT_STATUSES.map((st) => (
-                          <option key={st} value={st}>
-                            {st.replaceAll('_', ' ')}
-                          </option>
-                        ))}
-                      </select>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-medium text-body mb-1">
+                          Investigation Stage
+                        </label>
+                        <select
+                          value={nextStatus}
+                          onChange={(e) => setNextStatus(e.target.value as ComplaintStatus)}
+                          className="w-full rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+                        >
+                          {COMPLAINT_STATUSES.map((st) => (
+                            <option key={st} value={st}>
+                              {st.replaceAll('_', ' ')}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-body mb-1">
+                          Assign Lead Investigator
+                        </label>
+                        <select
+                          value={nextAssignedTo}
+                          onChange={(e) => setNextAssignedTo(e.target.value)}
+                          className="w-full rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+                        >
+                          <option value="">Unassigned</option>
+                          {investigators.map((inv) => (
+                            <option key={inv.id} value={inv.id}>
+                              {inv.full_name} ({inv.badge_number})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-body mb-1">
+                          Public Remark (visible to citizen)
+                        </label>
+                        <input
+                          type="text"
+                          value={publicRemark}
+                          onChange={(e) => setPublicRemark(e.target.value)}
+                          placeholder="Optional citizen-facing status update..."
+                          className="w-full rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-body mb-1">
+                          Internal Note (officer only)
+                        </label>
+                        <input
+                          type="text"
+                          value={internalNote}
+                          onChange={(e) => setInternalNote(e.target.value)}
+                          placeholder="Optional confidential investigator note..."
+                          className="w-full rounded-[5px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
                       <button
                         type="button"
                         disabled={statusUpdateLoading}
                         onClick={() => void handleStatusUpdate()}
-                        className="rounded-[5px] bg-sky-600 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-50 cursor-pointer"
+                        className="rounded-[5px] bg-accent-strong px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer transition-colors"
                       >
-                        {statusUpdateLoading ? 'Updating...' : 'Update Status'}
+                        {statusUpdateLoading ? 'Updating...' : 'Save Status & Remark'}
                       </button>
                     </div>
                   </div>
                 ) : null}
 
-                <div className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-                  <div className="border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-white">
+                {detail.statusHistory && detail.statusHistory.length > 0 ? (
+                  <div className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+                    <div className="border-b border-border-subtle bg-highlight/50 px-4 py-2.5">
+                      <h3 className="text-xs font-semibold text-heading">
+                        Status & Remarks Log ({detail.statusHistory.length})
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-border-subtle">
+                      {detail.statusHistory.map((h) => (
+                        <div key={h.id} className="px-4 py-2.5 text-xs space-y-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-semibold text-heading">
+                              {h.status} · <span className="text-accent-strong">{h.citizen_status}</span>
+                            </span>
+                            <span className="font-mono text-[11px] text-muted">
+                              {formatTimestamp(h.changed_at)} · {h.changed_by_name ?? 'System'}
+                            </span>
+                          </div>
+                          {h.public_remark ? (
+                            <p className="text-body">
+                              <span className="font-semibold text-heading">Public:</span> {h.public_remark}
+                            </p>
+                          ) : null}
+                          {h.internal_note ? (
+                            <p className="text-muted">
+                              <span className="font-semibold">Internal:</span> {h.internal_note}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+                  <div className="border-b border-border-subtle bg-highlight/50 px-4 py-2.5 flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-heading">
                       Linked Transactions ({detail.transactions.length})
                     </h3>
                   </div>
                   {detail.transactions.length === 0 ? (
-                    <p className="p-4 text-xs text-slate-400">No transactions ingested for this complaint yet.</p>
+                    <p className="p-4 text-xs text-muted">No transactions ingested for this complaint yet.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-[#0B1120] text-[11px] text-slate-400 border-b border-slate-800">
+                        <thead className="bg-subtle text-[11px] text-muted border-b border-border-subtle">
                           <tr>
                             <th className="px-3 py-2">TXN ID</th>
                             <th className="px-3 py-2">From → To</th>
@@ -656,19 +770,19 @@ export function ComplaintsPage() {
                             <th className="px-3 py-2 text-right">Amount</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/80">
+                        <tbody className="divide-y divide-border-subtle">
                           {detail.transactions.map((tx) => (
                             <tr key={tx.id}>
-                              <td className="px-3 py-2 font-mono text-sky-300">{tx.txn_id}</td>
+                              <td className="px-3 py-2 font-mono text-accent-strong">{tx.txn_id}</td>
                               <td className="px-3 py-2">
-                                <span className="font-mono text-slate-200">{tx.from_account_number}</span>
-                                <span className="mx-1.5 text-slate-500">→</span>
-                                <span className="font-mono text-slate-200">{tx.to_account_number}</span>
+                                <span className="font-mono text-heading">{tx.from_account_number}</span>
+                                <span className="mx-1.5 text-muted">→</span>
+                                <span className="font-mono text-heading">{tx.to_account_number}</span>
                               </td>
-                              <td className="px-3 py-2 text-slate-300">
+                              <td className="px-3 py-2 text-body">
                                 {tx.channel} · Hop {tx.hop_depth ?? '—'}
                               </td>
-                              <td className="px-3 py-2 text-right font-mono text-white tabular-nums">
+                              <td className="px-3 py-2 text-right font-mono font-medium text-heading tabular-nums">
                                 {formatInr(tx.amount)}
                               </td>
                             </tr>
@@ -679,23 +793,23 @@ export function ComplaintsPage() {
                   )}
                 </div>
 
-                <div className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-                  <div className="border-b border-slate-800 px-4 py-2.5">
-                    <h3 className="text-xs font-semibold text-white">
+                <div className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+                  <div className="border-b border-border-subtle bg-highlight/50 px-4 py-2.5">
+                    <h3 className="text-xs font-semibold text-heading">
                       Suspected Mule & Layering Accounts ({detail.suspiciousAccounts.length})
                     </h3>
                   </div>
                   {detail.suspiciousAccounts.length === 0 ? (
-                    <p className="p-4 text-xs text-slate-400">No flagged accounts linked to this case yet.</p>
+                    <p className="p-4 text-xs text-muted">No flagged accounts linked to this case yet.</p>
                   ) : (
-                    <div className="divide-y divide-slate-800/80">
+                    <div className="divide-y divide-border-subtle">
                       {detail.suspiciousAccounts.map((sa) => (
                         <div key={sa.id} className="px-4 py-3 flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-mono text-xs font-semibold text-white">
+                            <p className="font-mono text-xs font-semibold text-heading">
                               {sa.account_number} · {sa.holder_name}
                             </p>
-                            <p className="mt-0.5 text-xs text-slate-400">{sa.reason}</p>
+                            <p className="mt-0.5 text-xs text-muted">{sa.reason}</p>
                             <div className="mt-1.5">
                               <ScoreSourceBadge source={sa.score_source} />
                             </div>
@@ -703,7 +817,7 @@ export function ComplaintsPage() {
                           <div className="text-right shrink-0">
                             <StatusSignal level={sa.classification} />
                             {sa.mule_probability !== null ? (
-                              <p className="mt-1 font-mono text-xs text-slate-200 tabular-nums">
+                              <p className="mt-1 font-mono text-xs text-heading tabular-nums">
                                 Score: {(Number(sa.mule_probability) * 100).toFixed(1)}%
                               </p>
                             ) : null}
@@ -714,32 +828,32 @@ export function ComplaintsPage() {
                   )}
                 </div>
 
-                <div className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-                  <div className="border-b border-slate-800 px-4 py-2.5">
-                    <h3 className="text-xs font-semibold text-white">
+                <div className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+                  <div className="border-b border-border-subtle bg-highlight/50 px-4 py-2.5">
+                    <h3 className="text-xs font-semibold text-heading">
                       Predicted ATM Cash-Out Locations ({detail.atmPredictions.length})
                     </h3>
                   </div>
                   {detail.atmPredictions.length === 0 ? (
-                    <p className="p-4 text-xs text-slate-400">No ATM cash-out forecast generated for this complaint yet.</p>
+                    <p className="p-4 text-xs text-muted">No ATM cash-out forecast generated for this complaint yet.</p>
                   ) : (
-                    <div className="divide-y divide-slate-800/80">
+                    <div className="divide-y divide-border-subtle">
                       {detail.atmPredictions.map((ap) => (
                         <div key={ap.id} className="px-4 py-3 flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-xs font-semibold text-white">
+                            <p className="text-xs font-semibold text-heading">
                               #{ap.rank_order} · {ap.atm_id} · {ap.bank} ({ap.locality})
                             </p>
-                            <p className="text-[11px] text-slate-400">{ap.address}</p>
+                            <p className="text-[11px] text-muted">{ap.address}</p>
                             <div className="mt-1.5 flex items-center gap-2">
                               <ScoreSourceBadge source={ap.score_source} />
-                              <span className="font-mono text-[11px] text-amber-300">
+                              <span className="font-mono text-[11px] text-[#92400E] dark:text-amber-300">
                                 Window: {ap.window}
                               </span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="font-mono text-sm font-bold text-white tabular-nums">
+                            <p className="font-mono text-sm font-bold text-heading tabular-nums">
                               {Number(ap.risk_score).toFixed(1)}/100
                             </p>
                             <StatusSignal level={ap.risk_level} />

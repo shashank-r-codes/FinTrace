@@ -16,6 +16,7 @@ import { apiRequest, ApiError } from '../api/client';
 import { EmptyDataState, ErrorDataState } from '../components/common/DataState';
 import { StatusSignal } from '../components/common/StatusSignal';
 import { CommandLayout } from '../components/layout/CommandLayout';
+import { useTheme } from '../context/ThemeContext';
 import {
   ApiSuccessResponse,
   BankAccountSummary,
@@ -32,26 +33,50 @@ type TraceMode = 'complaint' | 'account';
 type TraceDirection = 'forward' | 'reverse' | 'both';
 type LayoutType = 'breadthfirst' | 'cose' | 'circle' | 'grid';
 
-function nodeColor(node: GraphNode, isRoot: boolean): { bg: string; border: string } {
+function nodeColor(
+  node: GraphNode,
+  isRoot: boolean,
+  theme: 'light' | 'dark'
+): { bg: string; border: string; text: string } {
+  if (theme === 'light') {
+    if (node.is_frozen) {
+      return { bg: '#E2E8F0', border: '#64748B', text: '#172B4D' };
+    }
+    if (node.suspicious_classification === 'CASH_OUT_CANDIDATE') {
+      return { bg: '#FEE2E2', border: '#DC2626', text: '#991B1B' };
+    }
+    if (node.suspicious_classification === 'SUSPECTED_MULE') {
+      return { bg: '#FEF3C7', border: '#D97706', text: '#92400E' };
+    }
+    if (node.suspicious_classification === 'LAYERING_NODE') {
+      return { bg: '#DCEEFF', border: '#3489E8', text: '#172B4D' };
+    }
+    if (isRoot) {
+      return { bg: '#3489E8', border: '#1E40AF', text: '#FFFFFF' };
+    }
+    return { bg: '#FFFFFF', border: '#64748B', text: '#172B4D' };
+  }
+
   if (node.is_frozen) {
-    return { bg: '#334155', border: '#94A3B8' };
+    return { bg: '#334155', border: '#94A3B8', text: '#F8FAFC' };
   }
   if (node.suspicious_classification === 'CASH_OUT_CANDIDATE') {
-    return { bg: '#7F1D1D', border: '#EF4444' };
+    return { bg: '#7F1D1D', border: '#EF4444', text: '#F8FAFC' };
   }
   if (node.suspicious_classification === 'SUSPECTED_MULE') {
-    return { bg: '#78350F', border: '#F59E0B' };
+    return { bg: '#78350F', border: '#F59E0B', text: '#F8FAFC' };
   }
   if (node.suspicious_classification === 'LAYERING_NODE') {
-    return { bg: '#0C4A6E', border: '#38BDF8' };
+    return { bg: '#0C4A6E', border: '#38BDF8', text: '#F8FAFC' };
   }
   if (isRoot) {
-    return { bg: '#1E3A8A', border: '#60A5FA' };
+    return { bg: '#1E3A8A', border: '#60A5FA', text: '#F8FAFC' };
   }
-  return { bg: '#1E293B', border: '#475569' };
+  return { bg: '#1E293B', border: '#475569', text: '#F8FAFC' };
 }
 
 export function NetworkGraphPage() {
+  const { theme } = useTheme();
   const [searchParams] = useSearchParams();
   const initialAccountParam = searchParams.get('accountId') || '';
   const initialComplaintParam = searchParams.get('complaintId') || '';
@@ -198,7 +223,7 @@ export function NetworkGraphPage() {
     }
   };
 
-  // Render Cytoscape graph whenever graphData, layoutName, or highlight changes
+  // Render Cytoscape graph whenever graphData, layoutName, theme, or highlight changes
   useEffect(() => {
     if (!cyContainerRef.current || !graphData || graphData.nodes.length === 0) {
       if (cyInstanceRef.current) {
@@ -231,17 +256,23 @@ export function NetworkGraphPage() {
     }
 
     const hasHighlight = highlightedNodeIds.size > 0;
+    const highlightStroke = theme === 'light' ? '#D97706' : '#FACC15';
+    const flaggedEdgeColor = theme === 'light' ? '#DC2626' : '#EF4444';
+    const normalEdgeColor = theme === 'light' ? '#3489E8' : '#38BDF8';
+    const edgeTextColor = theme === 'light' ? '#172B4D' : '#CBD5E1';
+    const edgeTextBg = theme === 'light' ? '#FFFFFF' : '#0B1120';
 
     const elements = [
       ...graphData.nodes.map((n) => {
-        const colors = nodeColor(n, n.id === rootId);
+        const colors = nodeColor(n, n.id === rootId, theme);
         const dimmed = hasHighlight && !highlightedNodeIds.has(n.id);
         return {
           data: {
             id: n.id,
             label: `${n.account_number}\n${n.holder_name.split(' ')[0]}`,
             bgColor: colors.bg,
-            borderColor: highlightedNodeIds.has(n.id) ? '#FACC15' : colors.border,
+            textColor: colors.text,
+            borderColor: highlightedNodeIds.has(n.id) ? highlightStroke : colors.border,
             borderWidth: highlightedNodeIds.has(n.id) || n.id === rootId ? 3 : 2,
             opacity: dimmed ? 0.28 : 1,
             raw: n,
@@ -257,7 +288,11 @@ export function NetworkGraphPage() {
             source: e.from_account,
             target: e.to_account,
             label: `${formatInr(e.amount)} · ${e.channel}`,
-            lineColor: isPathEdge ? '#FACC15' : e.is_flagged_fraud ? '#EF4444' : '#38BDF8',
+            lineColor: isPathEdge
+              ? highlightStroke
+              : e.is_flagged_fraud
+                ? flaggedEdgeColor
+                : normalEdgeColor,
             width: isPathEdge ? 3.5 : e.is_flagged_fraud ? 2.5 : 1.8,
             opacity: dimmed ? 0.2 : 0.95,
             raw: e,
@@ -277,15 +312,15 @@ export function NetworkGraphPage() {
             'background-color': 'data(bgColor)',
             'border-color': 'data(borderColor)',
             'border-width': 'data(borderWidth)',
-            color: '#F8FAFC',
+            color: 'data(textColor)',
             'font-size': '10px',
             'font-family': 'JetBrains Mono, monospace',
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
             'text-max-width': '95px',
-            width: 54,
-            height: 54,
+            width: 56,
+            height: 56,
             opacity: (ele: cytoscape.NodeSingular) => Number(ele.data('opacity') ?? 1),
           },
         },
@@ -301,9 +336,9 @@ export function NetworkGraphPage() {
             width: 'data(width)',
             'font-size': '9px',
             'font-family': 'JetBrains Mono, monospace',
-            color: '#CBD5E1',
-            'text-background-color': '#0B1120',
-            'text-background-opacity': 0.85,
+            color: edgeTextColor,
+            'text-background-color': edgeTextBg,
+            'text-background-opacity': 0.9,
             'text-background-padding': '2px',
             'text-rotation': 'autorotate',
             opacity: (ele: cytoscape.EdgeSingular) => Number(ele.data('opacity') ?? 1),
@@ -312,7 +347,7 @@ export function NetworkGraphPage() {
         {
           selector: ':selected',
           style: {
-            'border-color': '#38BDF8',
+            'border-color': '#3489E8',
             'border-width': 4,
           },
         },
@@ -349,7 +384,7 @@ export function NetworkGraphPage() {
       cy.destroy();
       cyInstanceRef.current = null;
     };
-  }, [graphData, layoutName, highlightedPathIdx, highlightedCycleIdx, paths]);
+  }, [graphData, layoutName, highlightedPathIdx, highlightedCycleIdx, paths, theme]);
 
   const sortedNodes = useMemo(() => {
     if (!graphData) return [];
@@ -365,7 +400,7 @@ export function NetworkGraphPage() {
           type="button"
           onClick={() => void runTrace()}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Play className="h-3.5 w-3.5" aria-hidden="true" />
           {loading ? 'Tracing...' : 'Run Graph Trace'}
@@ -375,7 +410,7 @@ export function NetworkGraphPage() {
       {error ? <ErrorDataState message={error} onRetry={() => void runTrace()} /> : null}
 
       {/* Trace Controls */}
-      <section className="rounded-[6px] border border-slate-800 bg-[#111827] p-4 space-y-3">
+      <section className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
@@ -383,8 +418,8 @@ export function NetworkGraphPage() {
               onClick={() => setMode('complaint')}
               className={`rounded-[5px] px-3 py-1.5 text-xs font-medium cursor-pointer ${
                 mode === 'complaint'
-                  ? 'bg-sky-950 text-sky-200 border border-sky-500/40'
-                  : 'bg-[#0B1120] text-slate-400 border border-slate-800 hover:text-slate-200'
+                  ? 'bg-highlight text-accent-strong border border-accent-strong/40 font-semibold'
+                  : 'bg-subtle text-muted border border-border-subtle hover:text-heading'
               }`}
             >
               Complaint Flow Graph
@@ -394,8 +429,8 @@ export function NetworkGraphPage() {
               onClick={() => setMode('account')}
               className={`rounded-[5px] px-3 py-1.5 text-xs font-medium cursor-pointer ${
                 mode === 'account'
-                  ? 'bg-sky-950 text-sky-200 border border-sky-500/40'
-                  : 'bg-[#0B1120] text-slate-400 border border-slate-800 hover:text-slate-200'
+                  ? 'bg-highlight text-accent-strong border border-accent-strong/40 font-semibold'
+                  : 'bg-subtle text-muted border border-border-subtle hover:text-heading'
               }`}
             >
               Account Multi-Hop Trace
@@ -407,18 +442,18 @@ export function NetworkGraphPage() {
               type="button"
               onClick={() => void handleFindPaths()}
               disabled={!graphData || graphData.nodes.length === 0 || pathsLoading}
-              className="inline-flex items-center gap-1.5 rounded-[5px] border border-amber-500/40 bg-amber-950/40 px-2.5 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-900/50 disabled:opacity-40 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-[5px] border border-amber-300 bg-[#FEF3C7] px-2.5 py-1.5 text-xs font-semibold text-[#92400E] hover:opacity-90 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200 disabled:opacity-40 cursor-pointer"
             >
-              <Route className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+              <Route className="h-3.5 w-3.5" aria-hidden="true" />
               {pathsLoading ? 'Finding Paths...' : 'Detect Suspicious Paths'}
             </button>
             {mode === 'account' ? (
               <button
                 type="button"
                 onClick={() => setShowCteVerify((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer"
               >
-                <Database className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+                <Database className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
                 {showCteVerify ? 'Hide SQL CTE' : 'SQL CTE Cross-Check'}
               </button>
             ) : null}
@@ -428,13 +463,13 @@ export function NetworkGraphPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {mode === 'complaint' ? (
             <div className="lg:col-span-3">
-              <label className="block text-[11px] font-medium text-slate-400 mb-1">
+              <label className="block text-[11px] font-medium text-muted mb-1">
                 Select Complaint
               </label>
               <select
                 value={selectedComplaintId}
                 onChange={(e) => setSelectedComplaintId(e.target.value)}
-                className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100 focus:border-sky-500 focus:outline-none"
+                className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
               >
                 {complaints.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -446,7 +481,7 @@ export function NetworkGraphPage() {
           ) : (
             <>
               <div className="lg:col-span-2">
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                <label className="block text-[11px] font-medium text-muted mb-1">
                   Root Account (Number or UUID)
                 </label>
                 <datalist id="graph-accounts-list">
@@ -462,17 +497,17 @@ export function NetworkGraphPage() {
                   value={accountQuery}
                   onChange={(e) => setAccountQuery(e.target.value)}
                   placeholder="e.g. SYNVICT00001 or UUID"
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-1.5 text-xs font-mono text-slate-100 focus:border-sky-500 focus:outline-none"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                <label className="block text-[11px] font-medium text-muted mb-1">
                   Direction
                 </label>
                 <select
                   value={direction}
                   onChange={(e) => setDirection(e.target.value as TraceDirection)}
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
                 >
                   <option value="forward">Forward (Money Flow)</option>
                   <option value="reverse">Reverse (Funding Origin)</option>
@@ -480,13 +515,13 @@ export function NetworkGraphPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                <label className="block text-[11px] font-medium text-muted mb-1">
                   Hop Depth (1–6)
                 </label>
                 <select
                   value={depth}
                   onChange={(e) => setDepth(Number(e.target.value))}
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs font-mono text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-mono text-heading"
                 >
                   {[1, 2, 3, 4, 5, 6].map((d) => (
                     <option key={d} value={d}>
@@ -499,13 +534,13 @@ export function NetworkGraphPage() {
           )}
 
           <div>
-            <label className="block text-[11px] font-medium text-slate-400 mb-1">
+            <label className="block text-[11px] font-medium text-muted mb-1">
               Graph Layout
             </label>
             <select
               value={layoutName}
               onChange={(e) => setLayoutName(e.target.value as LayoutType)}
-              className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100"
+              className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
             >
               <option value="breadthfirst">Layered DAG (Breadthfirst)</option>
               <option value="cose">Force-Directed (CoSE)</option>
@@ -518,12 +553,12 @@ export function NetworkGraphPage() {
 
       {/* Main Graph Canvas + Metrics Inspector */}
       <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-8 rounded-[6px] border border-slate-800 bg-[#111827] flex flex-col overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-2.5">
+        <div className="xl:col-span-8 rounded-[6px] border border-border-subtle bg-card flex flex-col overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-subtle px-4 py-2.5">
             <div className="flex items-center gap-3 text-xs">
-              <span className="font-semibold text-white">Verified Account Flow Canvas</span>
+              <span className="font-semibold text-heading">Verified Account Flow Canvas</span>
               {graphData ? (
-                <span className="font-mono text-[11px] text-slate-400 tabular-nums">
+                <span className="font-mono text-[11px] text-muted tabular-nums">
                   {graphData.summary.node_count} nodes · {graphData.summary.edge_count} real DB edges ·{' '}
                   {formatInr(graphData.summary.total_amount)}
                 </span>
@@ -534,7 +569,7 @@ export function NetworkGraphPage() {
               <button
                 type="button"
                 onClick={() => cyInstanceRef.current?.zoom(cyInstanceRef.current.zoom() * 1.2)}
-                className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                className="rounded p-1.5 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
                 title="Zoom In"
               >
                 <ZoomIn className="h-3.5 w-3.5" />
@@ -542,7 +577,7 @@ export function NetworkGraphPage() {
               <button
                 type="button"
                 onClick={() => cyInstanceRef.current?.zoom(cyInstanceRef.current.zoom() * 0.8)}
-                className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                className="rounded p-1.5 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
                 title="Zoom Out"
               >
                 <ZoomOut className="h-3.5 w-3.5" />
@@ -550,7 +585,7 @@ export function NetworkGraphPage() {
               <button
                 type="button"
                 onClick={() => cyInstanceRef.current?.fit(undefined, 28)}
-                className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                className="rounded p-1.5 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
                 title="Fit Graph"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
@@ -562,7 +597,7 @@ export function NetworkGraphPage() {
                     setHighlightedPathIdx(null);
                     setHighlightedCycleIdx(null);
                   }}
-                  className="ml-1 inline-flex items-center gap-1 rounded-[4px] border border-slate-700 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800 cursor-pointer"
+                  className="ml-1 inline-flex items-center gap-1 rounded-[4px] border border-border-subtle px-2 py-1 text-[11px] text-heading hover:bg-highlight cursor-pointer"
                 >
                   <RefreshCw className="h-3 w-3" />
                   Clear Highlight
@@ -571,9 +606,9 @@ export function NetworkGraphPage() {
             </div>
           </div>
 
-          <div className="relative h-[460px] bg-[#070B14]">
+          <div className="relative h-[460px] bg-app">
             {loading ? (
-              <div className="flex h-full items-center justify-center font-mono text-xs text-slate-400">
+              <div className="flex h-full items-center justify-center font-mono text-xs text-muted">
                 Building NetworkX subgraph from PostgreSQL ledger...
               </div>
             ) : !graphData || graphData.nodes.length === 0 ? (
@@ -589,24 +624,24 @@ export function NetworkGraphPage() {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 border-t border-slate-800 px-4 py-2 text-[11px] text-slate-400">
+          <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle bg-subtle px-4 py-2 text-[11px] text-body">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-red-500 bg-red-950" />
+              <span className="h-2.5 w-2.5 rounded-[2px] border border-[#DC2626] bg-[#FEE2E2] dark:border-red-500 dark:bg-red-950" />
               Cash-Out Candidate
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-amber-500 bg-amber-950" />
+              <span className="h-2.5 w-2.5 rounded-[2px] border border-[#D97706] bg-[#FEF3C7] dark:border-amber-500 dark:bg-amber-950" />
               Suspected Mule
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-sky-400 bg-sky-950" />
+              <span className="h-2.5 w-2.5 rounded-[2px] border border-[#3489E8] bg-[#DCEEFF] dark:border-sky-400 dark:bg-sky-950" />
               Layering Node
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-slate-400 bg-slate-700" />
+              <span className="h-2.5 w-2.5 rounded-[2px] border border-slate-500 bg-slate-200 dark:border-slate-400 dark:bg-slate-700" />
               Frozen Account
             </span>
-            <span className="ml-auto font-mono text-[10px] text-slate-500">
+            <span className="ml-auto font-mono text-[10px] text-muted">
               Every edge maps 1:1 to a PostgreSQL transactions row
             </span>
           </div>
@@ -615,9 +650,9 @@ export function NetworkGraphPage() {
         {/* Right Inspector Panel */}
         <div className="xl:col-span-4 space-y-4">
           {/* Selected Node or Edge */}
-          <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+          <div className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-heading">
                 {selectedNode
                   ? 'Node Metrics Inspector'
                   : selectedEdge
@@ -638,48 +673,48 @@ export function NetworkGraphPage() {
             {selectedNode ? (
               <div className="space-y-3 text-xs">
                 <div>
-                  <p className="font-mono text-sm font-bold text-white">{selectedNode.account_number}</p>
-                  <p className="text-slate-300">
+                  <p className="font-mono text-sm font-bold text-heading">{selectedNode.account_number}</p>
+                  <p className="text-body">
                     {selectedNode.holder_name} · {selectedNode.branch_city} ({selectedNode.account_type})
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 font-mono text-[11px] tabular-nums">
-                  <div className="rounded border border-slate-800 bg-[#0B1120] p-2">
-                    <p className="text-slate-400">Inflow / Outflow</p>
-                    <p className="text-slate-100 mt-0.5">
+                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                    <p className="text-muted">Inflow / Outflow</p>
+                    <p className="text-heading mt-0.5">
                       {formatInr(selectedNode.total_inflow)} / {formatInr(selectedNode.total_outflow)}
                     </p>
                   </div>
-                  <div className="rounded border border-slate-800 bg-[#0B1120] p-2">
-                    <p className="text-slate-400">Pass-Through Ratio</p>
-                    <p className="text-amber-300 mt-0.5">
+                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                    <p className="text-muted">Pass-Through Ratio</p>
+                    <p className="text-amber-700 dark:text-amber-300 mt-0.5">
                       {selectedNode.pass_through_ratio !== null
                         ? `${(selectedNode.pass_through_ratio * 100).toFixed(1)}%`
                         : '—'}
                     </p>
                   </div>
-                  <div className="rounded border border-slate-800 bg-[#0B1120] p-2">
-                    <p className="text-slate-400">Avg Fwd Latency</p>
-                    <p className="text-sky-300 mt-0.5">
+                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                    <p className="text-muted">Avg Fwd Latency</p>
+                    <p className="text-accent-strong mt-0.5">
                       {selectedNode.avg_forward_latency_sec !== null
                         ? `${selectedNode.avg_forward_latency_sec}s`
                         : '—'}
                     </p>
                   </div>
-                  <div className="rounded border border-slate-800 bg-[#0B1120] p-2">
-                    <p className="text-slate-400">1h Velocity / Fan</p>
-                    <p className="text-slate-100 mt-0.5">
+                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                    <p className="text-muted">1h Velocity / Fan</p>
+                    <p className="text-heading mt-0.5">
                       {selectedNode.velocity_1h} tx/h · {selectedNode.fan_in}→{selectedNode.fan_out}
                     </p>
                   </div>
-                  <div className="rounded border border-slate-800 bg-[#0B1120] p-2">
-                    <p className="text-slate-400">PageRank</p>
-                    <p className="text-slate-100 mt-0.5">{selectedNode.pagerank.toFixed(4)}</p>
+                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                    <p className="text-muted">PageRank</p>
+                    <p className="text-heading mt-0.5">{selectedNode.pagerank.toFixed(4)}</p>
                   </div>
-                  <div className="rounded border border-slate-800 bg-[#0B1120] p-2">
-                    <p className="text-slate-400">Betweenness</p>
-                    <p className="text-slate-100 mt-0.5">
+                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                    <p className="text-muted">Betweenness</p>
+                    <p className="text-heading mt-0.5">
                       {selectedNode.betweenness_centrality.toFixed(4)}
                     </p>
                   </div>
@@ -693,13 +728,13 @@ export function NetworkGraphPage() {
                       setAccountQuery(selectedNode.account_number);
                       setDirection('forward');
                     }}
-                    className="rounded-[4px] border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-slate-200 hover:bg-slate-800 cursor-pointer"
+                    className="rounded-[4px] border border-border-subtle bg-subtle px-2.5 py-1 text-[11px] font-medium text-heading hover:bg-highlight cursor-pointer"
                   >
                     Set as Trace Root
                   </button>
                   <Link
                     to={`/fraud-ml?accountId=${encodeURIComponent(selectedNode.id)}`}
-                    className="rounded-[4px] bg-sky-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-sky-500"
+                    className="rounded-[4px] bg-accent-strong px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-accent-strong-hover"
                   >
                     Score in ML Engine
                   </Link>
@@ -707,11 +742,11 @@ export function NetworkGraphPage() {
               </div>
             ) : selectedEdge ? (
               <div className="space-y-2 text-xs">
-                <p className="font-mono font-bold text-sky-300">{selectedEdge.txn_id}</p>
-                <p className="font-mono text-white text-sm tabular-nums">
+                <p className="font-mono font-bold text-accent-strong">{selectedEdge.txn_id}</p>
+                <p className="font-mono text-heading text-sm tabular-nums">
                   {formatInr(selectedEdge.amount)} · {selectedEdge.channel}
                 </p>
-                <p className="font-mono text-[11px] text-slate-400 tabular-nums">
+                <p className="font-mono text-[11px] text-muted tabular-nums">
                   {formatTimestamp(selectedEdge.timestamp)} · Hop {selectedEdge.hop_depth ?? '—'}
                 </p>
                 <StatusSignal
@@ -720,15 +755,15 @@ export function NetworkGraphPage() {
                 />
               </div>
             ) : (
-              <div className="space-y-2 text-xs text-slate-400">
+              <div className="space-y-2 text-xs text-muted">
                 <p>Click any account node or transaction arrow on the canvas to inspect centrality, latency, and pass-through metrics.</p>
                 {sortedNodes[0] ? (
-                  <div className="rounded border border-slate-800 bg-[#0B1120] p-2.5">
-                    <p className="text-[11px] text-slate-400">Highest PageRank Node</p>
-                    <p className="font-mono text-xs font-semibold text-white mt-0.5">
+                  <div className="rounded border border-border-subtle bg-subtle p-2.5">
+                    <p className="text-[11px] text-muted">Highest PageRank Node</p>
+                    <p className="font-mono text-xs font-semibold text-heading mt-0.5">
                       {sortedNodes[0].account_number} · {sortedNodes[0].holder_name}
                     </p>
-                    <p className="font-mono text-[11px] text-sky-300 tabular-nums">
+                    <p className="font-mono text-[11px] text-accent-strong tabular-nums">
                       PageRank {sortedNodes[0].pagerank.toFixed(4)} · Pass-through{' '}
                       {sortedNodes[0].pass_through_ratio !== null
                         ? `${(sortedNodes[0].pass_through_ratio * 100).toFixed(0)}%`
@@ -741,21 +776,21 @@ export function NetworkGraphPage() {
           </div>
 
           {/* Cycles & Layering Detection */}
-          <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4 space-y-2.5">
+          <div className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <AlertTriangle
-                  className={`h-4 w-4 ${graphData?.summary.has_cycles ? 'text-red-400' : 'text-slate-500'}`}
+                  className={`h-4 w-4 ${graphData?.summary.has_cycles ? 'text-[#DC2626] dark:text-red-400' : 'text-muted'}`}
                   aria-hidden="true"
                 />
-                <h3 className="text-xs font-semibold text-white">
+                <h3 className="text-xs font-semibold text-heading">
                   Layering Cycles ({graphData?.cycles.length ?? 0})
                 </h3>
               </div>
             </div>
 
             {!graphData || graphData.cycles.length === 0 ? (
-              <p className="text-xs text-slate-400">No closed money-laundering loops detected in current subgraph.</p>
+              <p className="text-xs text-muted">No closed money-laundering loops detected in current subgraph.</p>
             ) : (
               <div className="space-y-1.5 max-h-36 overflow-y-auto">
                 {graphData.cycles.map((cyc, idx) => {
@@ -772,8 +807,8 @@ export function NetworkGraphPage() {
                       }}
                       className={`w-full rounded-[4px] border px-2.5 py-1.5 text-left font-mono text-[11px] cursor-pointer ${
                         highlightedCycleIdx === idx
-                          ? 'border-yellow-400 bg-yellow-950/30 text-yellow-200'
-                          : 'border-slate-800 bg-[#0B1120] text-slate-300 hover:border-slate-700'
+                          ? 'border-amber-400 bg-[#FEF3C7] text-[#92400E] dark:bg-yellow-950/30 dark:text-yellow-200'
+                          : 'border-border-subtle bg-subtle text-body hover:bg-highlight'
                       }`}
                     >
                       {labels.join(' → ')} → {labels[0]}
@@ -786,10 +821,10 @@ export function NetworkGraphPage() {
 
           {/* Suspicious Paths */}
           {paths.length > 0 ? (
-            <div className="rounded-[6px] border border-slate-800 bg-[#111827] p-4 space-y-2.5">
+            <div className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-2.5">
               <div className="flex items-center gap-1.5">
-                <GitBranch className="h-4 w-4 text-amber-400" aria-hidden="true" />
-                <h3 className="text-xs font-semibold text-white">
+                <GitBranch className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <h3 className="text-xs font-semibold text-heading">
                   Suspicious Flow Paths ({paths.length})
                 </h3>
               </div>
@@ -804,14 +839,14 @@ export function NetworkGraphPage() {
                     }}
                     className={`w-full rounded-[4px] border px-2.5 py-2 text-left cursor-pointer ${
                       highlightedPathIdx === idx
-                        ? 'border-yellow-400 bg-yellow-950/30'
-                        : 'border-slate-800 bg-[#0B1120] hover:border-slate-700'
+                        ? 'border-amber-400 bg-[#FEF3C7] dark:bg-yellow-950/30'
+                        : 'border-border-subtle bg-subtle hover:bg-highlight'
                     }`}
                   >
-                    <p className="font-mono text-[11px] text-slate-100 break-all">
+                    <p className="font-mono text-[11px] text-heading break-all">
                       {p.path_account_numbers.join(' → ')}
                     </p>
-                    <p className="font-mono text-[10px] text-amber-300 mt-0.5 tabular-nums">
+                    <p className="font-mono text-[10px] text-amber-700 dark:text-amber-300 mt-0.5 tabular-nums">
                       {p.hop_count} hops · Bottleneck {formatInr(p.bottleneck_amount)}
                     </p>
                   </button>
@@ -824,16 +859,16 @@ export function NetworkGraphPage() {
 
       {/* SQL Recursive CTE Verification Drawer */}
       {showCteVerify && cteEdges ? (
-        <section className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-          <div className="border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-white">
+        <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+          <div className="border-b border-border-subtle bg-subtle px-4 py-2.5 flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-heading">
               PostgreSQL Recursive CTE Verification ({cteEdges.length} hop edges)
             </h2>
-            <span className="font-mono text-[11px] text-sky-400">engine: postgresql-recursive-cte</span>
+            <span className="font-mono text-[11px] text-accent-strong">engine: postgresql-recursive-cte</span>
           </div>
           <div className="overflow-x-auto max-h-60">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#0F172A] text-[11px] text-slate-400 border-b border-slate-800">
+              <thead className="bg-highlight text-[11px] text-heading border-b border-border-subtle">
                 <tr>
                   <th className="px-4 py-2">Depth</th>
                   <th className="px-4 py-2">TXN ID</th>
@@ -842,18 +877,18 @@ export function NetworkGraphPage() {
                   <th className="px-4 py-2">Timestamp</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80 font-mono text-[11px]">
+              <tbody className="divide-y divide-border-subtle font-mono text-[11px]">
                 {cteEdges.map((edge) => (
-                  <tr key={`${edge.txn_id}-${edge.depth}`}>
-                    <td className="px-4 py-2 text-amber-300">Hop {edge.depth}</td>
-                    <td className="px-4 py-2 text-sky-300">{edge.txn_id}</td>
-                    <td className="px-4 py-2 text-slate-200">
+                  <tr key={`${edge.txn_id}-${edge.depth}`} className="hover:bg-subtle">
+                    <td className="px-4 py-2 text-amber-700 dark:text-amber-300">Hop {edge.depth}</td>
+                    <td className="px-4 py-2 text-accent-strong">{edge.txn_id}</td>
+                    <td className="px-4 py-2 text-heading">
                       {edge.from_account_number} → {edge.to_account_number}
                     </td>
-                    <td className="px-4 py-2 text-right text-white tabular-nums">
+                    <td className="px-4 py-2 text-right text-heading tabular-nums">
                       {formatInr(edge.amount)}
                     </td>
-                    <td className="px-4 py-2 text-slate-400 tabular-nums">
+                    <td className="px-4 py-2 text-muted tabular-nums">
                       {formatTimestamp(edge.timestamp)}
                     </td>
                   </tr>
@@ -866,21 +901,21 @@ export function NetworkGraphPage() {
 
       {/* Chronological Transaction Timeline */}
       {graphData && graphData.timeline.length > 0 ? (
-        <section className="rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden">
-          <div className="border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
+          <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-white">Chronological Transaction Timeline</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="text-sm font-semibold text-heading">Chronological Transaction Timeline</h2>
+              <p className="text-xs text-muted">
                 Ordered hop sequence showing inter-hop receive-and-forward latency
               </p>
             </div>
-            <span className="font-mono text-xs text-slate-400 tabular-nums">
+            <span className="font-mono text-xs text-muted tabular-nums">
               {graphData.timeline.length} events
             </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 bg-[#0F172A] text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-border-subtle bg-highlight text-[11px] font-semibold uppercase tracking-wider text-heading">
                 <tr>
                   <th className="px-4 py-2.5">Timestamp</th>
                   <th className="px-4 py-2.5 text-right">Δ Prev</th>
@@ -890,27 +925,27 @@ export function NetworkGraphPage() {
                   <th className="px-4 py-2.5 text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-border-subtle">
                 {graphData.timeline.map((item) => (
-                  <tr key={item.txn_id} className="hover:bg-slate-800/35">
-                    <td className="px-4 py-2.5 font-mono text-slate-200 tabular-nums whitespace-nowrap">
+                  <tr key={item.txn_id} className="hover:bg-subtle">
+                    <td className="px-4 py-2.5 font-mono text-heading tabular-nums whitespace-nowrap">
                       {formatTimestamp(item.timestamp)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-amber-300 tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-right font-mono text-amber-700 dark:text-amber-300 tabular-nums whitespace-nowrap">
                       +{item.delta_from_prev_sec}s
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-sky-300 whitespace-nowrap">
+                    <td className="px-4 py-2.5 font-mono text-accent-strong whitespace-nowrap">
                       {item.txn_id}
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className="font-mono text-slate-100">{item.from_account_number}</span>
-                      <span className="mx-1.5 text-slate-500">→</span>
-                      <span className="font-mono text-slate-100">{item.to_account_number}</span>
+                      <span className="font-mono text-heading">{item.from_account_number}</span>
+                      <span className="mx-1.5 text-muted">→</span>
+                      <span className="font-mono text-heading">{item.to_account_number}</span>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-slate-300">
+                    <td className="px-4 py-2.5 font-mono text-body">
                       {item.channel} · Hop {item.hop_depth ?? '—'}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-white tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-heading tabular-nums whitespace-nowrap">
                       {formatInr(item.amount)}
                     </td>
                   </tr>

@@ -1,9 +1,15 @@
 import { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AiAssistantPage } from './pages/AiAssistantPage';
 import { AlertsCentrePage } from './pages/AlertsCentrePage';
 import { AtmPredictionPage } from './pages/AtmPredictionPage';
+import { CitizenComplaintStatusPage } from './pages/citizen/CitizenComplaintStatusPage';
+import { CitizenDashboardPage } from './pages/citizen/CitizenDashboardPage';
+import { CitizenProfilePage } from './pages/citizen/CitizenProfilePage';
+import { FileComplaintPage } from './pages/citizen/FileComplaintPage';
+import { MyComplaintsPage } from './pages/citizen/MyComplaintsPage';
 import { ComplaintsPage } from './pages/ComplaintsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EvidencePage } from './pages/EvidencePage';
@@ -17,7 +23,7 @@ import { SettingsUsersPage } from './pages/SettingsUsersPage';
 import { TransactionExplorerPage } from './pages/TransactionExplorerPage';
 import { UserRole } from './types';
 
-function ProtectedRoute({
+function OfficerRoute({
   children,
   roles,
 }: {
@@ -28,14 +34,18 @@ function ProtectedRoute({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center text-xs font-mono text-slate-400">
-        Restoring FinTrace investigator session...
+      <div className="min-h-screen bg-app flex items-center justify-center text-xs font-mono text-muted">
+        Restoring FinTrace session...
       </div>
     );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'citizen') {
+    return <Navigate to="/citizen" replace />;
   }
 
   if (roles && !hasRole(...roles)) {
@@ -45,121 +55,194 @@ function ProtectedRoute({
   return <>{children}</>;
 }
 
+function CitizenRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-app flex items-center justify-center text-xs font-mono text-muted">
+        Restoring FinTrace citizen session...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== 'citizen') {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function CatchAllRedirect() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to={user.role === 'citizen' ? '/citizen' : '/'} replace />;
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/complaints"
-            element={
-              <ProtectedRoute>
-                <ComplaintsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/transactions"
-            element={
-              <ProtectedRoute>
-                <TransactionExplorerPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/graph"
-            element={
-              <ProtectedRoute>
-                <NetworkGraphPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/fraud-ml"
-            element={
-              <ProtectedRoute>
-                <FraudDetectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/atm-predictions"
-            element={
-              <ProtectedRoute>
-                <AtmPredictionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/map"
-            element={
-              <ProtectedRoute>
-                <GeospatialMapPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/alerts"
-            element={
-              <ProtectedRoute>
-                <AlertsCentrePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/investigations"
-            element={
-              <ProtectedRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
-                <InvestigationsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/evidence"
-            element={
-              <ProtectedRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
-                <EvidencePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <ProtectedRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
-                <ReportsAnalyticsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/assistant"
-            element={
-              <ProtectedRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
-                <AiAssistantPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute roles={['Administrator', 'Senior Investigator']}>
-                <SettingsUsersPage />
-              </ProtectedRoute>
-            }
-          />
+            {/* Citizen Portal Routes (Strictly isolated) */}
+            <Route
+              path="/citizen"
+              element={
+                <CitizenRoute>
+                  <CitizenDashboardPage />
+                </CitizenRoute>
+              }
+            />
+            <Route
+              path="/citizen/file"
+              element={
+                <CitizenRoute>
+                  <FileComplaintPage />
+                </CitizenRoute>
+              }
+            />
+            <Route
+              path="/citizen/complaints"
+              element={
+                <CitizenRoute>
+                  <MyComplaintsPage />
+                </CitizenRoute>
+              }
+            />
+            <Route
+              path="/citizen/complaints/:id"
+              element={
+                <CitizenRoute>
+                  <CitizenComplaintStatusPage />
+                </CitizenRoute>
+              }
+            />
+            <Route
+              path="/citizen/profile"
+              element={
+                <CitizenRoute>
+                  <CitizenProfilePage />
+                </CitizenRoute>
+              }
+            />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            {/* Officer Command Centre Routes */}
+            <Route
+              path="/"
+              element={
+                <OfficerRoute>
+                  <DashboardPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/complaints"
+              element={
+                <OfficerRoute>
+                  <ComplaintsPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <OfficerRoute>
+                  <TransactionExplorerPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/graph"
+              element={
+                <OfficerRoute>
+                  <NetworkGraphPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/fraud-ml"
+              element={
+                <OfficerRoute>
+                  <FraudDetectionPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/atm-predictions"
+              element={
+                <OfficerRoute>
+                  <AtmPredictionPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/map"
+              element={
+                <OfficerRoute>
+                  <GeospatialMapPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/alerts"
+              element={
+                <OfficerRoute>
+                  <AlertsCentrePage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/investigations"
+              element={
+                <OfficerRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
+                  <InvestigationsPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/evidence"
+              element={
+                <OfficerRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
+                  <EvidencePage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <OfficerRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
+                  <ReportsAnalyticsPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/assistant"
+              element={
+                <OfficerRoute roles={['Administrator', 'Senior Investigator', 'Investigator']}>
+                  <AiAssistantPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <OfficerRoute roles={['Administrator', 'Senior Investigator']}>
+                  <SettingsUsersPage />
+                </OfficerRoute>
+              }
+            />
+
+            <Route path="*" element={<CatchAllRedirect />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

@@ -8,7 +8,7 @@ import { query, withTransaction } from '../../config/db.js';
 import { recordAuditLog } from '../../middleware/audit.js';
 import { authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/errorHandler.js';
-import { authorizeRoles } from '../../middleware/rbac.js';
+import { authorizeOfficer, authorizeRoles } from '../../middleware/rbac.js';
 import { validate, ValidatedRequest } from '../../middleware/validate.js';
 
 const router = Router();
@@ -84,7 +84,7 @@ async function resolveAccountId(client: PoolClient, identifier: string): Promise
   return resByNumber.rows[0].id;
 }
 
-router.use(authenticate);
+router.use(authenticate, authorizeOfficer);
 
 router.get(
   '/',

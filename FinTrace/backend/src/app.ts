@@ -12,6 +12,7 @@ import alertsRoutes from './modules/alerts/alerts.routes.js';
 import assistantRoutes from './modules/assistant/assistant.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
+import citizenRoutes from './modules/citizen/citizen.routes.js';
 import complaintsRoutes from './modules/complaints/complaints.routes.js';
 import evidenceRoutes from './modules/evidence/evidence.routes.js';
 import graphRoutes from './modules/graph/graph.routes.js';
@@ -77,6 +78,7 @@ export function createApp() {
 
   // Core API v1 routes
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/citizen', citizenRoutes);
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/complaints', complaintsRoutes);
   app.use('/api/v1/accounts', accountsRoutes);

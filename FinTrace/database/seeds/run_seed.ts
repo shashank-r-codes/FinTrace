@@ -26,6 +26,8 @@ async function runSeed(): Promise<void> {
       console.log('Resetting synthetic tables...');
       await client.query(`
         TRUNCATE TABLE
+          citizen_notifications,
+          complaint_status_history,
           audit_logs,
           evidence_records,
           investigations,
@@ -81,10 +83,19 @@ async function runSeed(): Promise<void> {
         throw new Error(`Missing role ID for ${u.role_name}`);
       }
       await client.query(
-        `INSERT INTO users (id, email, password_hash, full_name, role_id, institution_id, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+        `INSERT INTO users (id, email, password_hash, full_name, role_id, institution_id, victim_id, phone_masked, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
          ON CONFLICT (email) DO NOTHING`,
-        [u.id, u.email, u.password_hash, u.full_name, roleId, u.institution_id]
+        [
+          u.id,
+          u.email,
+          u.password_hash,
+          u.full_name,
+          roleId,
+          u.institution_id,
+          u.victim_id ?? null,
+          u.phone_masked ?? null,
+        ]
       );
 
       if (u.investigator) {
@@ -168,25 +179,30 @@ async function runSeed(): Promise<void> {
     for (const cmp of data.complaints) {
       await client.query(
         `INSERT INTO complaints (
-           id, complaint_number, victim_id, assigned_to, fraud_type,
+           id, complaint_number, reference_no, victim_id, filed_by_user_id, assigned_to, fraud_type,
            reported_amount, currency, incident_timestamp, reported_at,
-           status, priority, summary, city, is_synthetic
+           status, citizen_status, priority, summary, city, victim_bank_name, victim_account_masked, is_synthetic
          )
-         VALUES ($1, $2, $3, $4, $5, $6, 'INR', $7, $8, $9, $10, $11, $12, TRUE)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'INR', $9, $10, $11, $12, $13, $14, $15, $16, $17, TRUE)
          ON CONFLICT (complaint_number) DO NOTHING`,
         [
           cmp.id,
           cmp.complaint_number,
+          cmp.reference_no,
           cmp.victim_id,
+          cmp.filed_by_user_id ?? null,
           cmp.assigned_to,
           cmp.fraud_type,
           cmp.reported_amount,
           cmp.incident_timestamp,
           cmp.reported_at,
           cmp.status,
+          cmp.citizen_status,
           cmp.priority,
           cmp.summary,
           cmp.city,
+          cmp.victim_bank_name ?? null,
+          cmp.victim_account_masked ?? null,
         ]
       );
     }
@@ -370,6 +386,44 @@ async function runSeed(): Promise<void> {
           ev.file_name,
           ev.sha256_hash,
           JSON.stringify(ev.metadata_json),
+        ]
+      );
+    }
+
+    // 14b. Complaint Status History & Citizen Notifications
+    for (const hist of data.complaintStatusHistory) {
+      await client.query(
+        `INSERT INTO complaint_status_history (id, complaint_id, status, citizen_status, public_remark, internal_note, changed_by, changed_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          hist.id,
+          hist.complaint_id,
+          hist.status,
+          hist.citizen_status,
+          hist.public_remark,
+          hist.internal_note,
+          hist.changed_by,
+          hist.changed_at,
+        ]
+      );
+    }
+
+    for (const notif of data.citizenNotifications) {
+      await client.query(
+        `INSERT INTO citizen_notifications (id, user_id, complaint_id, reference_no, title, message, citizen_status, is_read, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          notif.id,
+          notif.user_id,
+          notif.complaint_id,
+          notif.reference_no,
+          notif.title,
+          notif.message,
+          notif.citizen_status,
+          notif.is_read,
+          notif.created_at,
         ]
       );
     }

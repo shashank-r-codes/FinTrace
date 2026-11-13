@@ -180,7 +180,7 @@ export function InvestigationsPage() {
           <button
             type="button"
             onClick={() => void loadData()}
-            className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             Refresh
@@ -192,7 +192,7 @@ export function InvestigationsPage() {
               setNewComplaintId(unlinkedComplaints[0]?.id ?? '');
               setShowOpenModal(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             Initialize Case File
@@ -203,25 +203,25 @@ export function InvestigationsPage() {
       {error ? <ErrorDataState message={error} onRetry={() => void loadData()} /> : null}
 
       {notice ? (
-        <div className="flex items-center gap-2 rounded-[6px] border border-emerald-700/50 bg-emerald-950/30 px-4 py-2.5 text-xs text-emerald-200">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden="true" />
+        <div className="flex items-center gap-2 rounded-[6px] border border-emerald-300 bg-[#D8F8EC] px-4 py-2.5 text-xs text-[#065F46] dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{notice}</span>
         </div>
       ) : null}
 
       <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         {/* Case List */}
-        <div className="xl:col-span-5 rounded-[6px] border border-slate-800 bg-[#111827] overflow-hidden flex flex-col">
-          <div className="border-b border-slate-800 px-4 py-3 flex items-center justify-between gap-2">
+        <div className="xl:col-span-5 rounded-[6px] border border-border-subtle bg-card overflow-hidden flex flex-col">
+          <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-sky-400" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-white">Active Case Dossiers</h2>
+              <Briefcase className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+              <h2 className="text-sm font-semibold text-heading">Active Case Dossiers</h2>
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as InvestigationStatus | '')}
               aria-label="Filter investigations by status"
-              className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2 py-1 text-[11px] text-slate-200"
+              className="rounded-[5px] border border-border-subtle bg-card px-2 py-1 text-[11px] text-heading"
             >
               <option value="">All Statuses</option>
               <option value="OPEN">OPEN</option>
@@ -240,7 +240,7 @@ export function InvestigationsPage() {
               description="Open an investigation from a registered cybercrime complaint."
             />
           ) : (
-            <div className="divide-y divide-slate-800/80 max-h-[640px] overflow-y-auto">
+            <div className="divide-y divide-border-subtle max-h-[640px] overflow-y-auto">
               {investigations.map((inv) => {
                 const isSelected = selectedInv?.id === inv.id;
                 return (
@@ -249,21 +249,21 @@ export function InvestigationsPage() {
                     type="button"
                     onClick={() => syncEditorFromRow(inv)}
                     className={`w-full text-left px-4 py-3 space-y-1.5 cursor-pointer ${
-                      isSelected ? 'bg-sky-950/35' : 'hover:bg-slate-800/35'
+                      isSelected ? 'bg-highlight' : 'hover:bg-subtle'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-mono text-xs font-semibold text-sky-300">
+                        <p className="font-mono text-xs font-semibold text-accent-strong">
                           {inv.case_number} · {inv.complaint_number}
                         </p>
-                        <p className="text-xs font-medium text-white mt-0.5">
+                        <p className="text-xs font-medium text-heading mt-0.5">
                           {inv.victim_name} · {formatFraudType(inv.fraud_type)}
                         </p>
                       </div>
                       <StatusSignal level={inv.status} />
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between text-[11px] text-muted">
                       <span>Lead: {inv.lead_investigator_name ?? 'Unassigned'}</span>
                       <span className="font-mono tabular-nums">
                         {formatInr(inv.reported_amount)} · {inv.evidence_count} evid.
@@ -277,7 +277,7 @@ export function InvestigationsPage() {
         </div>
 
         {/* Case Editor */}
-        <div className="xl:col-span-7 rounded-[6px] border border-slate-800 bg-[#111827] p-5 space-y-4">
+        <div className="xl:col-span-7 rounded-[6px] border border-border-subtle bg-card p-5 space-y-4">
           {!selectedInv ? (
             <EmptyDataState
               title="Select an investigation case"
@@ -285,15 +285,15 @@ export function InvestigationsPage() {
             />
           ) : (
             <>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle pb-3">
                 <div>
-                  <p className="font-mono text-xs text-sky-300">
+                  <p className="font-mono text-xs font-semibold text-accent-strong">
                     {selectedInv.case_number} · Linked {selectedInv.complaint_number}
                   </p>
-                  <h2 className="text-base font-bold text-white mt-0.5">
+                  <h2 className="text-base font-bold text-heading mt-0.5">
                     {selectedInv.victim_name} ({formatInr(selectedInv.reported_amount)})
                   </h2>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-muted">
                     Opened {formatTimestamp(selectedInv.opened_at)} · {selectedInv.atm_prediction_count} ATM forecasts · {selectedInv.open_alert_count} open alerts
                   </p>
                 </div>
@@ -301,7 +301,7 @@ export function InvestigationsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     to={`/evidence?investigationId=${encodeURIComponent(selectedInv.id)}`}
-                    className="rounded-[5px] border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-slate-800"
+                    className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-highlight"
                   >
                     Evidence ({selectedInv.evidence_count})
                   </Link>
@@ -309,9 +309,9 @@ export function InvestigationsPage() {
                     type="button"
                     disabled={exportingPdf}
                     onClick={() => void handleExportPdf()}
-                    className="inline-flex items-center gap-1.5 rounded-[5px] border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-slate-800 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer"
                   >
-                    <FileDown className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+                    <FileDown className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
                     {exportingPdf ? 'Building PDF...' : 'Export PDF Dossier'}
                   </button>
                 </div>
@@ -319,13 +319,13 @@ export function InvestigationsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                  <label className="block text-[11px] font-medium text-muted mb-1">
                     Case Workflow Status
                   </label>
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as InvestigationStatus)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                   >
                     <option value="OPEN">OPEN</option>
                     <option value="ACTIVE_TRACE">ACTIVE_TRACE</option>
@@ -336,13 +336,13 @@ export function InvestigationsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                  <label className="block text-[11px] font-medium text-muted mb-1">
                     Lead Investigator
                   </label>
                   <select
                     value={editLeadId}
                     onChange={(e) => setEditLeadId(e.target.value)}
-                    className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                   >
                     <option value="">Unassigned</option>
                     {investigators.map((inv) => (
@@ -355,7 +355,7 @@ export function InvestigationsPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                <label className="block text-[11px] font-medium text-muted mb-1">
                   Investigative Findings Summary
                 </label>
                 <textarea
@@ -363,24 +363,24 @@ export function InvestigationsPage() {
                   value={editFindings}
                   onChange={(e) => setEditFindings(e.target.value)}
                   placeholder="Document verified money trail hops, bank nodal freeze confirmations, and ATM CCTV coordination..."
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-3 py-2 text-xs text-slate-100 leading-relaxed focus:border-sky-500 focus:outline-none"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-2 text-xs text-heading leading-relaxed focus:border-accent-strong focus:outline-none"
                 />
               </div>
 
               {/* Action Checklist */}
               <div className="space-y-2.5">
-                <p className="text-[11px] font-medium text-slate-400">
+                <p className="text-[11px] font-medium text-muted">
                   Recommended Operational Actions
                 </p>
 
                 <div className="space-y-1.5">
                   {editActions.length === 0 ? (
-                    <p className="text-xs text-slate-500">No action items logged yet.</p>
+                    <p className="text-xs text-muted">No action items logged yet.</p>
                   ) : (
                     editActions.map((item, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center justify-between gap-2 rounded-[5px] border border-slate-800 bg-[#0B1120] px-3 py-2 text-xs"
+                        className="flex items-center justify-between gap-2 rounded-[5px] border border-border-subtle bg-subtle px-3 py-2 text-xs"
                       >
                         <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                           <input
@@ -391,20 +391,22 @@ export function InvestigationsPage() {
                                 prev.map((a, i) => (i === idx ? { ...a, done: !a.done } : a))
                               )
                             }
-                            className="h-3.5 w-3.5 rounded border-slate-600"
+                            className="h-3.5 w-3.5 rounded border-border-strong accent-accent-strong"
                           />
-                          <span className={item.done ? 'line-through text-slate-500' : 'text-slate-200'}>
+                          <span className={item.done ? 'line-through text-muted' : 'text-heading'}>
                             {item.action}
                           </span>
                         </label>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-mono text-[10px] text-amber-300">{item.priority}</span>
+                          <span className="font-mono text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                            {item.priority}
+                          </span>
                           <button
                             type="button"
                             onClick={() =>
                               setEditActions((prev) => prev.filter((_, i) => i !== idx))
                             }
-                            className="text-slate-500 hover:text-red-400 cursor-pointer"
+                            className="text-muted hover:text-[#DC2626] dark:hover:text-red-400 cursor-pointer"
                             aria-label="Remove action"
                           >
                             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -421,14 +423,14 @@ export function InvestigationsPage() {
                     value={newActionText}
                     onChange={(e) => setNewActionText(e.target.value)}
                     placeholder="Add next intervention task (e.g. Issue 91 CrPC notice to SBI nodal)..."
-                    className="flex-1 min-w-[220px] rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-xs text-slate-100"
+                    className="flex-1 min-w-[220px] rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
                   />
                   <select
                     value={newActionPriority}
                     onChange={(e) =>
                       setNewActionPriority(e.target.value as RecommendedActionItem['priority'])
                     }
-                    className="rounded-[5px] border border-slate-700 bg-[#0B1120] px-2 py-1.5 text-xs font-mono text-slate-200"
+                    className="rounded-[5px] border border-border-subtle bg-subtle px-2 py-1.5 text-xs font-mono text-heading"
                   >
                     <option value="IMMEDIATE">IMMEDIATE</option>
                     <option value="HIGH">HIGH</option>
@@ -438,19 +440,19 @@ export function InvestigationsPage() {
                   <button
                     type="button"
                     onClick={handleAddAction}
-                    className="rounded-[5px] border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 cursor-pointer"
+                    className="rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer"
                   >
                     Add Task
                   </button>
                 </div>
               </div>
 
-              <div className="flex justify-end border-t border-slate-800 pt-3">
+              <div className="flex justify-end border-t border-border-subtle pt-3">
                 <button
                   type="button"
                   disabled={saving}
                   onClick={() => void handleSaveCase()}
-                  className="inline-flex items-center gap-1.5 rounded-[5px] bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-4 py-2 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer"
                 >
                   <Save className="h-3.5 w-3.5" aria-hidden="true" />
                   {saving ? 'Saving Casework...' : 'Save Investigation Record'}
@@ -463,26 +465,26 @@ export function InvestigationsPage() {
 
       {/* Open Investigation Modal */}
       {showOpenModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-[6px] border border-slate-700 bg-[#111827] p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-sm font-semibold text-white">Initialize Investigation Case</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-[6px] border border-border-subtle bg-card p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <h2 className="text-sm font-semibold text-heading">Initialize Investigation Case</h2>
               <button
                 type="button"
                 onClick={() => setShowOpenModal(false)}
-                className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                className="text-xs text-muted hover:text-heading cursor-pointer"
               >
                 Close
               </button>
             </div>
             <form onSubmit={(e) => void handleOpenInvestigation(e)} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1">Complaint Without Investigation</label>
+                <label className="block text-muted mb-1">Complaint Without Investigation</label>
                 <select
                   required
                   value={newComplaintId}
                   onChange={(e) => setNewComplaintId(e.target.value)}
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                 >
                   {unlinkedComplaints.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -492,11 +494,11 @@ export function InvestigationsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Lead Investigator</label>
+                <label className="block text-muted mb-1">Lead Investigator</label>
                 <select
                   value={newLeadId}
                   onChange={(e) => setNewLeadId(e.target.value)}
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                 >
                   <option value="">Unassigned</option>
                   {investigators.map((inv) => (
@@ -507,26 +509,26 @@ export function InvestigationsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Initial Notes</label>
+                <label className="block text-muted mb-1">Initial Notes</label>
                 <textarea
                   rows={3}
                   value={newFindings}
                   onChange={(e) => setNewFindings(e.target.value)}
-                  className="w-full rounded-[5px] border border-slate-700 bg-[#0B1120] px-2.5 py-1.5 text-slate-100"
+                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowOpenModal(false)}
-                  className="rounded-[5px] border border-slate-700 px-3 py-1.5 text-slate-300 cursor-pointer"
+                  className="rounded-[5px] border border-border-subtle px-3 py-1.5 text-body hover:bg-highlight cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-[5px] bg-sky-600 px-3.5 py-1.5 font-semibold text-white hover:bg-sky-500 cursor-pointer"
+                  className="rounded-[5px] bg-accent-strong px-3.5 py-1.5 font-semibold text-white hover:bg-accent-strong-hover cursor-pointer"
                 >
                   Create Case File
                 </button>
