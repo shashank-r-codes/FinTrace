@@ -132,6 +132,9 @@ All seeded demo users share the password **`FinTrace@Demo2026`** (non-production
 ## Automated Tests
 
 ```bash
+# Comprehensive End-to-End Prevention Layer Suite (16 assertions, <30ms)
+npx tsx test_prevention_layer.ts
+
 # Backend unit & Supertest integration tests
 cd FinTrace/backend
 npm install
@@ -153,7 +156,7 @@ cd FinTrace
 git init
 git add .
 git status   # Confirm .env and node_modules are ignored by .gitignore
-git commit -m "feat: initial FinTrace cybercrime prediction platform (SIH PS 26184)"
+git commit -m "feat: FinTrace cybercrime prediction platform & real-time prevention layer (SIH PS 26184)"
 git branch -M main
 git remote add origin https://github.com/shashank-r-codes/FinTrace.git
 git push -u origin main
@@ -161,8 +164,16 @@ git push -u origin main
 
 ---
 
+## UI & Design Attribution
+
+UI refinement method adapted from unslop by Damir Sokolovsky (@heydamir), CC BY 4.0, https://github.com/heydamir/unslop
+
+---
+
 ## Documentation Index
 
+- **[Design Principles & Forensic Evidentiary Design System](/FinTrace/docs/DESIGN.md)**
+- **[Fraud Prevention Layer Architecture & Section 91 CrPC Bridge](/FinTrace/docs/PREVENTION_LAYER_ARCHITECTURE.md)**
 - **[System Architecture](/FinTrace/docs/ARCHITECTURE.md)**
 - **[Predictive ATM Cash-Out Engine Formula & Limitations](/FinTrace/docs/ATM_ENGINE.md)**
 - **[End-to-End Verification Checklist](/FinTrace/docs/E2E_VERIFICATION_CHECKLIST.md)**

@@ -3,48 +3,79 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* =============================================================================
+   FINTRACE FOUNDATION TOKENS
+   Calm forensic ledger direction: neutral base palette, strict 8% hairlines,
+   calibrated risk signals, nested geometric radii, single ease-out curve.
+   ============================================================================= */
+
 :root {
   color-scheme: light;
+
+  /* Base Canvas & Ledger Surfaces (FinTrace Light Foundation) */
   --bg-app: #F4F8FF;
   --bg-card: #FFFFFF;
   --bg-sidebar: #FFFFFF;
   --bg-subtle: #EDF4FF;
   --bg-highlight: #DCEEFF;
-  --bg-ai: #E8E5FF;
-  --bg-mint: #D8F8EC;
+  --bg-ai: #EDF4FF;
+  --bg-mint: #ECFDF5;
 
+  /* Three Distinct Typography Contrast Tiers */
   --text-heading: #172B4D;
   --text-body: #334155;
   --text-muted: #64748B;
 
+  /* Deliberate Primary Action Accent */
   --accent: #60A5FA;
   --accent-strong: #3489E8;
   --accent-strong-hover: #2563EB;
 
-  --border-subtle: #CBD5E1;
-  --border-strong: #94A3B8;
+  /* Quiet Evidentiary Hairlines (8% and 16% Opacity) */
+  --border-subtle: rgba(23, 43, 77, 0.08);
+  --border-strong: rgba(23, 43, 77, 0.16);
 
+  /* Calibrated Semantic Signals (WCAG AA) */
   --emerald: #10B981;
   --risk-critical-bg: #FEE2E2;
   --risk-critical-text: #991B1B;
   --risk-critical-marker: #DC2626;
+
   --risk-high-bg: #FEF3C7;
   --risk-high-text: #92400E;
   --risk-high-marker: #D97706;
+
   --risk-medium-bg: #DCEEFF;
   --risk-medium-text: #1E40AF;
   --risk-medium-marker: #3489E8;
+
   --risk-low-bg: #D8F8EC;
   --risk-low-text: #065F46;
   --risk-low-marker: #10B981;
 
-  --scrollbar-track: #EDF4FF;
-  --scrollbar-thumb: #94A3B8;
-  --scrollbar-thumb-hover: #64748B;
+  --scrollbar-track: #F4F8FF;
+  --scrollbar-thumb: #CBD5E1;
+  --scrollbar-thumb-hover: #94A3B8;
+
+  /* Shadows & Highlights */
+  --shadow-subtle: 0 1px 2px rgba(23, 43, 77, 0.04);
+  --shadow-float: 0 12px 32px rgba(23, 43, 77, 0.08);
+  --top-highlight: none;
+
+  /* Standard Geometric Nested Radii */
+  --radius-tag: 6px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+
+  /* Motion */
+  --ease-unslop: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dark {
   color-scheme: dark;
+
+  /* Dark Forensic Canvas & Surfaces */
   --bg-app: #0B1120;
   --bg-card: #111827;
   --bg-sidebar: #090E1A;
@@ -53,39 +84,51 @@
   --bg-ai: #1E1B4B;
   --bg-mint: #064E3B;
 
+  /* Dark Text Contrast Tiers */
   --text-heading: #F1F5F9;
   --text-body: #CBD5E1;
   --text-muted: #94A3B8;
 
+  /* Dark Action Accent */
   --accent: #38BDF8;
-  --accent-strong: #0284C7;
-  --accent-strong-hover: #0EA5E9;
+  --accent-strong: #0EA5E9;
+  --accent-strong-hover: #38BDF8;
 
-  --border-subtle: #1E293B;
-  --border-strong: #334155;
+  /* Dark Hairlines (8% and 15% Opacity) */
+  --border-subtle: rgba(241, 245, 249, 0.08);
+  --border-strong: rgba(241, 245, 249, 0.16);
 
-  --emerald: #10B981;
-  --risk-critical-bg: rgba(127, 29, 29, 0.45);
-  --risk-critical-text: #FECACA;
+  /* Dark Semantic Signals */
+  --emerald: #34D399;
+  --risk-critical-bg: rgba(239, 68, 68, 0.14);
+  --risk-critical-text: #FCA5A5;
   --risk-critical-marker: #EF4444;
-  --risk-high-bg: rgba(120, 53, 15, 0.45);
+
+  --risk-high-bg: rgba(245, 158, 11, 0.14);
   --risk-high-text: #FDE68A;
   --risk-high-marker: #F59E0B;
-  --risk-medium-bg: rgba(12, 74, 110, 0.45);
+
+  --risk-medium-bg: rgba(14, 165, 233, 0.14);
   --risk-medium-text: #BAE6FD;
   --risk-medium-marker: #38BDF8;
-  --risk-low-bg: rgba(6, 78, 59, 0.45);
-  --risk-low-text: #A7F3D0;
-  --risk-low-marker: #10B981;
+
+  --risk-low-bg: rgba(16, 185, 129, 0.14);
+  --risk-low-text: #86EFAC;
+  --risk-low-marker: #34D399;
 
   --scrollbar-track: #0B1120;
   --scrollbar-thumb: #334155;
   --scrollbar-thumb-hover: #475569;
+
+  /* Top Hairline Highlight (Elevation separation without colored glows) */
+  --shadow-subtle: none;
+  --shadow-float: 0 16px 36px rgba(0, 0, 0, 0.45);
+  --top-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-app: var(--bg-app);
   --color-card: var(--bg-card);
@@ -113,83 +156,154 @@
     font-family: var(--font-sans);
     background-color: var(--bg-app);
     color: var(--text-heading);
-    transition: background-color 200ms ease, color 200ms ease;
+    transition: background-color 120ms var(--ease-unslop), color 120ms var(--ease-unslop);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Focus states & keyboard navigation */
+  :focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
 }
 
-.bg-grad-sky {
-  background-image: linear-gradient(135deg, #DCEEFF, #C7DCFF, #E8E5FF);
+/* =============================================================================
+   ACCESSIBILITY & PREFERS-REDUCED-MOTION PASS
+   Respects user operating system reduced motion preferences.
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
-.dark .bg-grad-sky {
-  background-image: linear-gradient(135deg, rgba(14, 116, 144, 0.22), rgba(30, 58, 138, 0.24), rgba(67, 56, 202, 0.2));
+
+/* =============================================================================
+   DEMOTED DECORATIVE GRADIENTS
+   Replaced multi-color noisy gradients with calm, quiet surface shifts
+   ============================================================================= */
+
+.bg-grad-sky {
+  background-color: var(--bg-subtle);
+  box-shadow: var(--top-highlight);
 }
 
 .bg-grad-mint {
-  background-image: linear-gradient(135deg, #D8F8EC, #C8F1E7, #DCEEFF);
-}
-.dark .bg-grad-mint {
-  background-image: linear-gradient(135deg, rgba(6, 78, 59, 0.28), rgba(17, 94, 89, 0.24), rgba(12, 74, 110, 0.22));
+  background-color: var(--risk-low-bg);
 }
 
 .bg-grad-ai {
-  background-image: linear-gradient(135deg, #E8E5FF, #DCE5FF, #DBEAFE);
-}
-.dark .bg-grad-ai {
-  background-image: linear-gradient(135deg, rgba(76, 29, 149, 0.25), rgba(49, 46, 129, 0.25), rgba(30, 58, 138, 0.22));
+  background-color: var(--bg-subtle);
 }
 
 .bg-grad-coral {
-  background-image: linear-gradient(135deg, #FFF1E6, #FFE4E6, #FCE7F3);
-}
-.dark .bg-grad-coral {
-  background-image: linear-gradient(135deg, rgba(124, 45, 18, 0.25), rgba(136, 19, 55, 0.24), rgba(112, 26, 117, 0.2));
+  background-color: var(--risk-high-bg);
 }
 
-/* Themed Leaflet popups and controls */
+/* =============================================================================
+   REUSABLE UNSLOP STRUCTURAL CLASSES
+   ============================================================================= */
+
+.unslop-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-subtle), var(--top-highlight);
+  transition: border-color 120ms var(--ease-unslop), background-color 120ms var(--ease-unslop);
+}
+
+.unslop-panel {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float), var(--top-highlight);
+}
+
+.unslop-control {
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-app);
+  transition: all 120ms var(--ease-unslop);
+}
+
+.unslop-control:focus-within,
+.unslop-control:focus {
+  border-color: var(--accent-strong);
+  outline: none;
+}
+
+.unslop-tag {
+  border-radius: var(--radius-tag);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* =============================================================================
+   LEAFLET INTEGRATION (THEMED, CALM CHROME)
+   ============================================================================= */
+
 .leaflet-container {
   background: var(--bg-subtle);
   font-family: var(--font-sans);
 }
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   background: var(--bg-card) !important;
   color: var(--text-heading) !important;
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2);
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-float) !important;
 }
+
 .leaflet-control-attribution {
   background: var(--bg-card) !important;
   color: var(--text-muted) !important;
   opacity: 0.9;
 }
+
 .leaflet-control-attribution a {
   color: var(--accent-strong) !important;
 }
+
 .leaflet-bar a {
   background-color: var(--bg-card) !important;
   color: var(--text-heading) !important;
   border-color: var(--border-subtle) !important;
 }
+
 .leaflet-bar a:hover {
   background-color: var(--bg-highlight) !important;
 }
 
-/* Custom subtle scrollbars for dense forensic tables */
+/* =============================================================================
+   SUBTLE SCROLLBARS
+   ============================================================================= */
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }

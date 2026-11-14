@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.db import fetch_all
-from app.services.explainer import detect_fraud_for_complaint
+from app.schemas import ScreeningPredictRequest, ScreeningPredictResponse
+from app.services.explainer import detect_fraud_for_complaint, predict_screening_ml
 from app.services.trainer import compute_atm_dbscan_clusters, train_and_evaluate_models
 
 router = APIRouter(prefix="/ml", tags=["ml"])
@@ -30,6 +31,11 @@ def get_model_metrics() -> dict:
 @router.post("/detect/{complaint_id}")
 def detect_complaint_fraud(complaint_id: str) -> dict:
     return detect_fraud_for_complaint(complaint_id)
+
+
+@router.post("/screen/predict", response_model=ScreeningPredictResponse)
+def predict_screening(request: ScreeningPredictRequest) -> dict:
+    return predict_screening_ml(request)
 
 
 @router.get("/clusters/atms")

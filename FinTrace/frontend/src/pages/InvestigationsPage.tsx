@@ -173,17 +173,17 @@ export function InvestigationsPage() {
 
   return (
     <CommandLayout
-      title="Investigations & Casework"
-      section="Response & Casework"
+      title="Investigations & casework management"
+      section="Casework and intelligence"
       actions={
-        <>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => void loadData()}
-            className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[8px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer transition-colors duration-120"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-            Refresh
+            <span>Refresh</span>
           </button>
           <button
             type="button"
@@ -192,157 +192,320 @@ export function InvestigationsPage() {
               setNewComplaintId(unlinkedComplaints[0]?.id ?? '');
               setShowOpenModal(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[8px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer transition-colors duration-120"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            Initialize Case File
+            <span>Initialize case file</span>
           </button>
-        </>
+        </div>
       }
     >
-      {error ? <ErrorDataState message={error} onRetry={() => void loadData()} /> : null}
+      <div className="space-y-6">
+        {error ? <ErrorDataState message={error} onRetry={() => void loadData()} /> : null}
 
-      {notice ? (
-        <div className="flex items-center gap-2 rounded-[6px] border border-emerald-300 bg-[#D8F8EC] px-4 py-2.5 text-xs text-[#065F46] dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-200">
-          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{notice}</span>
-        </div>
-      ) : null}
+        {notice ? (
+          <div className="flex items-center gap-2 rounded-[8px] border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+            <span>{notice}</span>
+          </div>
+        ) : null}
 
-      <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        {/* Case List */}
-        <div className="xl:col-span-5 rounded-[6px] border border-border-subtle bg-card overflow-hidden flex flex-col">
-          <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-accent-strong" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-heading">Active Case Dossiers</h2>
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+          {/* Case List */}
+          <div className="xl:col-span-5 rounded-[12px] border border-border-subtle bg-card overflow-hidden flex flex-col">
+            <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+                <h2 className="text-xs font-semibold text-heading">Active case dossiers</h2>
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as InvestigationStatus | '')}
+                aria-label="Filter investigations by status"
+                className="rounded-[8px] border border-border-subtle bg-card px-2.5 py-1 text-[11px] text-heading focus:outline-none"
+              >
+                <option value="">All statuses</option>
+                <option value="OPEN">OPEN</option>
+                <option value="ACTIVE_TRACE">ACTIVE_TRACE</option>
+                <option value="FREEZE_REQUESTED">FREEZE_REQUESTED</option>
+                <option value="ATM_SURVEILLANCE">ATM_SURVEILLANCE</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as InvestigationStatus | '')}
-              aria-label="Filter investigations by status"
-              className="rounded-[5px] border border-border-subtle bg-card px-2 py-1 text-[11px] text-heading"
-            >
-              <option value="">All Statuses</option>
-              <option value="OPEN">OPEN</option>
-              <option value="ACTIVE_TRACE">ACTIVE_TRACE</option>
-              <option value="FREEZE_REQUESTED">FREEZE_REQUESTED</option>
-              <option value="ATM_SURVEILLANCE">ATM_SURVEILLANCE</option>
-              <option value="CLOSED">CLOSED</option>
-            </select>
+
+            {loading ? (
+              <TableSkeleton rows={6} cols={3} />
+            ) : investigations.length === 0 ? (
+              <EmptyDataState
+                title="No investigations found"
+                description="Open an investigation from a registered cybercrime complaint."
+              />
+            ) : (
+              <div className="divide-y border-border-subtle max-h-[640px] overflow-y-auto">
+                {investigations.map((inv) => {
+                  const isSelected = selectedInv?.id === inv.id;
+                  return (
+                    <button
+                      key={inv.id}
+                      type="button"
+                      onClick={() => syncEditorFromRow(inv)}
+                      className={`w-full text-left px-4 py-3 space-y-1.5 cursor-pointer transition-colors duration-120 ${
+                        isSelected ? 'bg-highlight' : 'hover:bg-subtle'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-mono text-xs font-semibold text-accent-strong">
+                            {inv.case_number} · {inv.complaint_number}
+                          </p>
+                          <p className="text-xs font-medium text-heading mt-0.5">
+                            {inv.victim_name} · {formatFraudType(inv.fraud_type)}
+                          </p>
+                        </div>
+                        <StatusSignal level={inv.status} />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-muted">
+                        <span>Lead: {inv.lead_investigator_name ?? 'Unassigned'}</span>
+                        <span className="font-mono tabular-nums">
+                          {formatInr(inv.reported_amount)} · {inv.evidence_count} evid.
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {loading ? (
-            <TableSkeleton rows={6} cols={3} />
-          ) : investigations.length === 0 ? (
-            <EmptyDataState
-              title="No investigations found"
-              description="Open an investigation from a registered cybercrime complaint."
-            />
-          ) : (
-            <div className="divide-y divide-border-subtle max-h-[640px] overflow-y-auto">
-              {investigations.map((inv) => {
-                const isSelected = selectedInv?.id === inv.id;
-                return (
-                  <button
-                    key={inv.id}
-                    type="button"
-                    onClick={() => syncEditorFromRow(inv)}
-                    className={`w-full text-left px-4 py-3 space-y-1.5 cursor-pointer ${
-                      isSelected ? 'bg-highlight' : 'hover:bg-subtle'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-mono text-xs font-semibold text-accent-strong">
-                          {inv.case_number} · {inv.complaint_number}
-                        </p>
-                        <p className="text-xs font-medium text-heading mt-0.5">
-                          {inv.victim_name} · {formatFraudType(inv.fraud_type)}
-                        </p>
-                      </div>
-                      <StatusSignal level={inv.status} />
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-muted">
-                      <span>Lead: {inv.lead_investigator_name ?? 'Unassigned'}</span>
-                      <span className="font-mono tabular-nums">
-                        {formatInr(inv.reported_amount)} · {inv.evidence_count} evid.
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+          {/* Case Editor */}
+          <div className="xl:col-span-7 rounded-[12px] border border-border-subtle bg-card p-5 space-y-4">
+            {!selectedInv ? (
+              <EmptyDataState
+                title="Select an investigation case"
+                description="Choose a case from the left panel to assign leads, log findings, and export intelligence dossiers."
+              />
+            ) : (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle pb-3">
+                  <div>
+                    <p className="font-mono text-xs font-semibold text-accent-strong">
+                      {selectedInv.case_number} · Linked {selectedInv.complaint_number}
+                    </p>
+                    <h2 className="text-sm font-semibold text-heading mt-0.5">
+                      {selectedInv.victim_name} ({formatInr(selectedInv.reported_amount)})
+                    </h2>
+                    <p className="text-[11px] text-muted mt-0.5">
+                      Opened {formatTimestamp(selectedInv.opened_at)} · {selectedInv.atm_prediction_count} ATM forecasts · {selectedInv.open_alert_count} open alerts
+                    </p>
+                  </div>
 
-        {/* Case Editor */}
-        <div className="xl:col-span-7 rounded-[6px] border border-border-subtle bg-card p-5 space-y-4">
-          {!selectedInv ? (
-            <EmptyDataState
-              title="Select an investigation case"
-              description="Choose a case from the left panel to assign leads, log findings, and export intelligence dossiers."
-            />
-          ) : (
-            <>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      to={`/evidence?investigationId=${encodeURIComponent(selectedInv.id)}`}
+                      className="rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight transition-colors duration-120"
+                    >
+                      Evidence ({selectedInv.evidence_count})
+                    </Link>
+                    <button
+                      type="button"
+                      disabled={exportingPdf}
+                      onClick={() => void handleExportPdf()}
+                      className="inline-flex items-center gap-1.5 rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer transition-colors duration-120"
+                    >
+                      <FileDown className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
+                      <span>{exportingPdf ? 'Building PDF...' : 'Export PDF dossier'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-medium text-body mb-1">
+                      Case workflow status
+                    </label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value as InvestigationStatus)}
+                      className="w-full rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-heading focus:outline-none"
+                    >
+                      <option value="OPEN">OPEN</option>
+                      <option value="ACTIVE_TRACE">ACTIVE_TRACE</option>
+                      <option value="FREEZE_REQUESTED">FREEZE_REQUESTED</option>
+                      <option value="ATM_SURVEILLANCE">ATM_SURVEILLANCE</option>
+                      <option value="CLOSED">CLOSED</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-body mb-1">
+                      Lead investigator
+                    </label>
+                    <select
+                      value={editLeadId}
+                      onChange={(e) => setEditLeadId(e.target.value)}
+                      className="w-full rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-heading focus:outline-none"
+                    >
+                      <option value="">Unassigned</option>
+                      {investigators.map((inv) => (
+                        <option key={inv.id} value={inv.id}>
+                          {inv.full_name} ({inv.badge_number})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <p className="font-mono text-xs font-semibold text-accent-strong">
-                    {selectedInv.case_number} · Linked {selectedInv.complaint_number}
-                  </p>
-                  <h2 className="text-base font-bold text-heading mt-0.5">
-                    {selectedInv.victim_name} ({formatInr(selectedInv.reported_amount)})
-                  </h2>
-                  <p className="text-[11px] text-muted">
-                    Opened {formatTimestamp(selectedInv.opened_at)} · {selectedInv.atm_prediction_count} ATM forecasts · {selectedInv.open_alert_count} open alerts
-                  </p>
+                  <label className="block text-[11px] font-medium text-body mb-1">
+                    Findings & Case Narrative Summary
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={editFindings}
+                    onChange={(e) => setEditFindings(e.target.value)}
+                    placeholder="Document victim interview statements, multi-hop pass-through velocity findings, ATM surveillance reports..."
+                    className="w-full rounded-[8px] border border-border-subtle bg-subtle p-3 text-xs text-heading focus:outline-none"
+                  />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    to={`/evidence?investigationId=${encodeURIComponent(selectedInv.id)}`}
-                    className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-highlight"
-                  >
-                    Evidence ({selectedInv.evidence_count})
-                  </Link>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-body">
+                      Tactical next steps ({editActions.length})
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {editActions.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 rounded-[8px] border border-border-subtle bg-subtle p-2 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={item.done}
+                            onChange={(e) => {
+                              const next = [...editActions];
+                              next[idx] = { ...item, done: e.target.checked };
+                              setEditActions(next);
+                            }}
+                            className="h-3.5 w-3.5 rounded border-border-strong bg-card accent-accent-strong cursor-pointer"
+                          />
+                          <span className={item.done ? 'line-through text-muted' : 'text-heading'}>
+                            {item.action}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className={`rounded-[6px] px-2 py-0.5 text-[10px] font-semibold ${
+                              item.priority === 'IMMEDIATE'
+                                ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
+                                : item.priority === 'HIGH'
+                                ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                                : 'bg-subtle text-body border border-border-subtle'
+                            }`}
+                          >
+                            {item.priority}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditActions(editActions.filter((_, i) => i !== idx));
+                            }}
+                            className="text-muted hover:text-heading cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      type="text"
+                      value={newActionText}
+                      onChange={(e) => setNewActionText(e.target.value)}
+                      placeholder="Add investigation step (e.g. Issue Section 91 CrPC notice)..."
+                      className="flex-1 rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs text-heading focus:outline-none"
+                    />
+                    <select
+                      value={newActionPriority}
+                      onChange={(e) =>
+                        setNewActionPriority(e.target.value as RecommendedActionItem['priority'])
+                      }
+                      className="rounded-[8px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:outline-none"
+                    >
+                      <option value="IMMEDIATE">IMMEDIATE</option>
+                      <option value="HIGH">HIGH</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="LOW">LOW</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAddAction}
+                      className="rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer transition-colors duration-120"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
                   <button
                     type="button"
-                    disabled={exportingPdf}
-                    onClick={() => void handleExportPdf()}
-                    className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer"
+                    disabled={saving}
+                    onClick={() => void handleSaveCase()}
+                    className="inline-flex items-center gap-1.5 rounded-[8px] bg-accent-strong px-4 py-2 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer transition-colors duration-120"
                   >
-                    <FileDown className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
-                    {exportingPdf ? 'Building PDF...' : 'Export PDF Dossier'}
+                    <Save className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{saving ? 'Saving...' : 'Save casework updates'}</span>
                   </button>
                 </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* Initialize Case File Modal */}
+        {showOpenModal ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+            <div className="w-full max-w-lg rounded-[16px] border border-border-subtle bg-card p-5 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+                <h2 className="text-xs font-semibold text-heading">Initialize case file</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowOpenModal(false)}
+                  className="text-xs text-muted hover:text-heading cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <form onSubmit={(e) => void handleOpenInvestigation(e)} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-[11px] font-medium text-muted mb-1">
-                    Case Workflow Status
-                  </label>
+                  <label className="block text-[11px] font-medium text-body mb-1">Registered complaint</label>
                   <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value as InvestigationStatus)}
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
+                    required
+                    value={newComplaintId}
+                    onChange={(e) => setNewComplaintId(e.target.value)}
+                    className="w-full rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-heading focus:outline-none"
                   >
-                    <option value="OPEN">OPEN</option>
-                    <option value="ACTIVE_TRACE">ACTIVE_TRACE</option>
-                    <option value="FREEZE_REQUESTED">FREEZE_REQUESTED</option>
-                    <option value="ATM_SURVEILLANCE">ATM_SURVEILLANCE</option>
-                    <option value="CLOSED">CLOSED</option>
+                    {unlinkedComplaints.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.complaint_number} · {c.victim_name} ({formatInr(c.reported_amount)})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-muted mb-1">
-                    Lead Investigator
-                  </label>
+                  <label className="block text-[11px] font-medium text-body mb-1">Lead investigator</label>
                   <select
-                    value={editLeadId}
-                    onChange={(e) => setEditLeadId(e.target.value)}
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
+                    value={newLeadId}
+                    onChange={(e) => setNewLeadId(e.target.value)}
+                    className="w-full rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-heading focus:outline-none"
                   >
                     <option value="">Unassigned</option>
                     {investigators.map((inv) => (
@@ -352,191 +515,39 @@ export function InvestigationsPage() {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-muted mb-1">
-                  Investigative Findings Summary
-                </label>
-                <textarea
-                  rows={4}
-                  value={editFindings}
-                  onChange={(e) => setEditFindings(e.target.value)}
-                  placeholder="Document verified money trail hops, bank nodal freeze confirmations, and ATM CCTV coordination..."
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-2 text-xs text-heading leading-relaxed focus:border-accent-strong focus:outline-none"
-                />
-              </div>
-
-              {/* Action Checklist */}
-              <div className="space-y-2.5">
-                <p className="text-[11px] font-medium text-muted">
-                  Recommended Operational Actions
-                </p>
-
-                <div className="space-y-1.5">
-                  {editActions.length === 0 ? (
-                    <p className="text-xs text-muted">No action items logged yet.</p>
-                  ) : (
-                    editActions.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-2 rounded-[5px] border border-border-subtle bg-subtle px-3 py-2 text-xs"
-                      >
-                        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={item.done}
-                            onChange={() =>
-                              setEditActions((prev) =>
-                                prev.map((a, i) => (i === idx ? { ...a, done: !a.done } : a))
-                              )
-                            }
-                            className="h-3.5 w-3.5 rounded border-border-strong accent-accent-strong"
-                          />
-                          <span className={item.done ? 'line-through text-muted' : 'text-heading'}>
-                            {item.action}
-                          </span>
-                        </label>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-mono text-[10px] font-semibold text-amber-700 dark:text-amber-300">
-                            {item.priority}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditActions((prev) => prev.filter((_, i) => i !== idx))
-                            }
-                            className="text-muted hover:text-[#DC2626] dark:hover:text-red-400 cursor-pointer"
-                            aria-label="Remove action"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                <div>
+                  <label className="block text-[11px] font-medium text-body mb-1">Initial assessment notes</label>
+                  <textarea
+                    rows={3}
+                    value={newFindings}
+                    onChange={(e) => setNewFindings(e.target.value)}
+                    placeholder="Preliminary analysis of fund dispersal, primary beneficiary banks, priority ATM cash-out clusters..."
+                    className="w-full rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-heading focus:outline-none"
+                  />
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <input
-                    type="text"
-                    value={newActionText}
-                    onChange={(e) => setNewActionText(e.target.value)}
-                    placeholder="Add next intervention task (e.g. Issue 91 CrPC notice to SBI nodal)..."
-                    className="flex-1 min-w-[220px] rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
-                  />
-                  <select
-                    value={newActionPriority}
-                    onChange={(e) =>
-                      setNewActionPriority(e.target.value as RecommendedActionItem['priority'])
-                    }
-                    className="rounded-[5px] border border-border-subtle bg-subtle px-2 py-1.5 text-xs font-mono text-heading"
-                  >
-                    <option value="IMMEDIATE">IMMEDIATE</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="LOW">LOW</option>
-                  </select>
+                <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={handleAddAction}
-                    className="rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer"
+                    onClick={() => setShowOpenModal(false)}
+                    className="rounded-[8px] border border-border-subtle px-3.5 py-1.5 text-body hover:bg-highlight cursor-pointer transition-colors duration-120"
                   >
-                    Add Task
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-[8px] bg-accent-strong px-4 py-1.5 font-medium text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer transition-colors duration-120"
+                  >
+                    {saving ? 'Creating...' : 'Initialize dossier'}
                   </button>
                 </div>
-              </div>
-
-              <div className="flex justify-end border-t border-border-subtle pt-3">
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void handleSaveCase()}
-                  className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-4 py-2 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer"
-                >
-                  <Save className="h-3.5 w-3.5" aria-hidden="true" />
-                  {saving ? 'Saving Casework...' : 'Save Investigation Record'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Open Investigation Modal */}
-      {showOpenModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-[6px] border border-border-subtle bg-card p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-              <h2 className="text-sm font-semibold text-heading">Initialize Investigation Case</h2>
-              <button
-                type="button"
-                onClick={() => setShowOpenModal(false)}
-                className="text-xs text-muted hover:text-heading cursor-pointer"
-              >
-                Close
-              </button>
+              </form>
             </div>
-            <form onSubmit={(e) => void handleOpenInvestigation(e)} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-muted mb-1">Complaint Without Investigation</label>
-                <select
-                  required
-                  value={newComplaintId}
-                  onChange={(e) => setNewComplaintId(e.target.value)}
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
-                >
-                  {unlinkedComplaints.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.complaint_number} · {c.victim_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-muted mb-1">Lead Investigator</label>
-                <select
-                  value={newLeadId}
-                  onChange={(e) => setNewLeadId(e.target.value)}
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
-                >
-                  <option value="">Unassigned</option>
-                  {investigators.map((inv) => (
-                    <option key={inv.id} value={inv.id}>
-                      {inv.full_name} ({inv.badge_number})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-muted mb-1">Initial Notes</label>
-                <textarea
-                  rows={3}
-                  value={newFindings}
-                  onChange={(e) => setNewFindings(e.target.value)}
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-heading"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowOpenModal(false)}
-                  className="rounded-[5px] border border-border-subtle px-3 py-1.5 text-body hover:bg-highlight cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-[5px] bg-accent-strong px-3.5 py-1.5 font-semibold text-white hover:bg-accent-strong-hover cursor-pointer"
-                >
-                  Create Case File
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </CommandLayout>
   );
 }

@@ -6,6 +6,17 @@ import { authenticate } from '../../middleware/auth.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { authorizeOfficer, authorizeRoles } from '../../middleware/rbac.js';
 import { validate, ValidatedRequest } from '../../middleware/validate.js';
+import {
+  getAccountIntelligenceDetail,
+  getAccountRiskHistory,
+  getIntelligenceFilters,
+  getIntelligenceRegistry,
+  getIntelligenceSummary,
+  listIntelligenceQuerySchema,
+  reEvaluateAccountProfile,
+  updateAccountClassification,
+  updateClassificationSchema,
+} from './accounts.intelligence.js';
 
 const router = Router();
 
@@ -38,8 +49,13 @@ const idParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+const accountIdParamSchema = z.object({
+  accountId: z.string().uuid(),
+});
+
 router.use(authenticate, authorizeOfficer);
 
+// ---------------- INSTITUTIONS ----------------
 router.get('/institutions', async (_req, res, next) => {
   try {
     const result = await query(
@@ -51,6 +67,148 @@ router.get('/institutions', async (_req, res, next) => {
   }
 });
 
+// =============================================================================
+// PREVENTION LAYER: ACCOUNT INTELLIGENCE & RISK REGISTRY (Phase 2)
+// (Mounted BEFORE /:id to prevent parameter route shadowing)
+// =============================================================================
+
+router.get(
+  '/intelligence',
+  validate({ query: listIntelligenceQuerySchema }),
+  async (req: ValidatedRequest<unknown, z.infer<typeof listIntelligenceQuerySchema>>, res, next) => {
+    try {
+      const q = req.validatedQuery!;
+      const result = await getIntelligenceRegistry(q);
+      res.json({
+        success: true,
+        data: result.accounts,
+        summary: result.summary,
+        pagination: result.pagination,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Route order: Literal routes declared BEFORE parameterised :accountId to prevent shadowing.
+ */
+router.get('/intelligence/filters', async (_req, res, next) => {
+  try {
+    const data = await getIntelligenceFilters();
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/intelligence/summary', async (_req, res, next) => {
+  try {
+    const data = await getIntelligenceSummary();
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get(
+  '/intelligence/:accountId',
+  validate({ params: accountIdParamSchema }),
+  async (req: ValidatedRequest<unknown, Record<string, unknown>, { accountId: string }>, res, next) => {
+    try {
+      const { accountId } = req.validatedParams!;
+      const data = await getAccountIntelligenceDetail(accountId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  '/intelligence/:accountId/history',
+  validate({ params: accountIdParamSchema }),
+  async (req: ValidatedRequest<unknown, Record<string, unknown>, { accountId: string }>, res, next) => {
+    try {
+      const { accountId } = req.validatedParams!;
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+      const data = await getAccountRiskHistory(accountId, limit, offset);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch(
+  '/intelligence/:accountId/classification',
+  authorizeRoles('Administrator', 'Senior Investigator', 'Investigator', 'Bank Nodal Officer'),
+  validate({ params: accountIdParamSchema, body: updateClassificationSchema }),
+  async (
+    req: ValidatedRequest<z.infer<typeof updateClassificationSchema>, Record<string, unknown>, { accountId: string }>,
+    res,
+    next
+  ) => {
+    try {
+      const { accountId } = req.validatedParams!;
+      const body = req.body as z.infer<typeof updateClassificationSchema>;
+      const updated = await updateAccountClassification(accountId, body, req.user!.userId);
+
+      await recordAuditLog({
+        req,
+        action: 'ACCOUNT_CLASSIFICATION_UPDATED',
+        resourceType: 'ACCOUNT_INTELLIGENCE',
+        resourceId: accountId,
+        statusCode: 200,
+        details: {
+          classification: body.classification,
+          reason: body.reason,
+          complaintId: body.complaintId ?? null,
+          evidenceId: body.evidenceId ?? null,
+          freezeAccount: body.freezeAccount,
+        },
+      });
+
+      res.json({ success: true, data: updated });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  '/intelligence/:accountId/re-evaluate',
+  authorizeRoles('Administrator', 'Senior Investigator', 'Investigator', 'Bank Nodal Officer'),
+  validate({ params: accountIdParamSchema }),
+  async (req: ValidatedRequest<unknown, Record<string, unknown>, { accountId: string }>, res, next) => {
+    try {
+      const { accountId } = req.validatedParams!;
+      const result = await reEvaluateAccountProfile(accountId, req.user!.userId);
+
+      await recordAuditLog({
+        req,
+        action: 'ACCOUNT_INTELLIGENCE_REEVALUATED',
+        resourceType: 'ACCOUNT_INTELLIGENCE',
+        resourceId: accountId,
+        statusCode: 200,
+        details: {
+          risk_score: result.risk_score,
+          risk_classification: result.risk_classification,
+          account_status: result.account_status,
+          mule_indicators: result.mule_indicators,
+        },
+      });
+
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------- EXISTING ACCOUNTS LISTING ----------------
 router.get(
   '/',
   validate({ query: listAccountsQuerySchema }),
@@ -116,6 +274,7 @@ router.get(
   }
 );
 
+// ---------------- EXISTING ACCOUNT DETAIL ----------------
 router.get(
   '/:id',
   validate({ params: idParamSchema }),
@@ -178,6 +337,7 @@ router.get(
   }
 );
 
+// ---------------- EXISTING FLAG / FREEZE ACCOUNT ----------------
 router.post(
   '/:id/flag',
   authorizeRoles('Administrator', 'Senior Investigator', 'Investigator', 'Bank Nodal Officer'),

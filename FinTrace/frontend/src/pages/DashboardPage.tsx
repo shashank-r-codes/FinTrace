@@ -70,7 +70,7 @@ export function DashboardPage() {
       setPredictions(predRes.data.predictions);
       setTxnTotal(txnRes.pagination?.total ?? txnRes.data.length);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load command overview.');
+      setError(err instanceof ApiError ? err.message : 'Unable to load casework overview.');
     } finally {
       setLoading(false);
     }
@@ -130,151 +130,156 @@ export function DashboardPage() {
 
   const chartPalette = useMemo(
     () =>
-      theme === 'light'
+      theme === 'dark'
         ? {
-            grid: '#E2E8F0',
-            tick: '#64748B',
-            axis: '#CBD5E1',
-            tooltipBg: '#FFFFFF',
-            tooltipBorder: '#CBD5E1',
-            tooltipText: '#172B4D',
-            bar: '#3489E8',
-          }
-        : {
-            grid: '#1E293B',
+            grid: 'rgba(241, 245, 249, 0.08)',
             tick: '#94A3B8',
-            axis: '#334155',
-            tooltipBg: '#0F172A',
-            tooltipBorder: '#334155',
+            axis: 'rgba(241, 245, 249, 0.16)',
+            tooltipBg: '#111827',
+            tooltipBorder: 'rgba(241, 245, 249, 0.16)',
             tooltipText: '#F1F5F9',
             bar: '#38BDF8',
+          }
+        : {
+            grid: 'rgba(23, 43, 77, 0.08)',
+            tick: '#64748B',
+            axis: 'rgba(23, 43, 77, 0.16)',
+            tooltipBg: '#FFFFFF',
+            tooltipBorder: 'rgba(23, 43, 77, 0.16)',
+            tooltipText: '#172B4D',
+            bar: '#3489E8',
           },
     [theme]
   );
 
   return (
     <CommandLayout
-      title="Command Overview"
-      section="Core Operations"
+      title="Casework overview"
+      section="Core operations"
       actions={
-        <>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => void loadDashboard()}
-            className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[8px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-subtle cursor-pointer transition-colors duration-120 shrink-0"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 text-muted ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            <span>Refresh</span>
           </button>
           <Link
             to="/complaints"
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-[8px] bg-accent-strong px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-strong-hover transition-colors duration-120 shrink-0"
           >
-            Open Complaints Registry
+            <span>Open complaints ledger</span>
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
-        </>
+        </div>
       }
     >
       {error ? <ErrorDataState message={error} onRetry={() => void loadDashboard()} /> : null}
 
-      {/* Hero Operational Strip */}
-      <section className="rounded-[6px] border border-border-subtle bg-grad-sky px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      {/* Operational Scope Bar */}
+      <section className="rounded-[12px] border border-border-subtle bg-card p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent-strong">
-            Real-Time Cyber-Financial Command Center
-          </p>
-          <p className="text-sm font-medium text-heading mt-0.5">
-            Track multi-hop fund laundering, score mule accounts, and dispatch teams to high-risk ATMs.
+          <h2 className="text-sm font-semibold tracking-tight text-heading">
+            Live investigative status
+          </h2>
+          <p className="mt-0.5 text-xs text-muted leading-relaxed">
+            Active cyber-financial complaints, early warning alerts, and forecast cash-out hotspots across Bengaluru jurisdiction.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <Link
             to="/map"
-            className="rounded-[5px] border border-border-subtle bg-card/85 px-3 py-1.5 font-medium text-heading hover:bg-card"
+            className="rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 font-medium text-heading hover:bg-highlight transition-colors"
           >
-            Open Live GIS Map
+            Open GIS hotspot map
           </Link>
           <Link
             to="/alerts"
-            className="rounded-[5px] bg-accent-strong px-3 py-1.5 font-semibold text-white hover:bg-accent-strong-hover"
+            className="rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 font-medium text-heading hover:bg-highlight transition-colors"
           >
-            Triage Alerts ({metrics.openAlertCount})
+            Triage alerts ({metrics.openAlertCount})
           </Link>
         </div>
       </section>
 
-      {/* Top 4-metric single-elevation KPI strip */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" aria-label="Key operational metrics">
-        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
-          <p className="text-xs font-medium text-muted">Active Cybercrime Cases</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
+      {/* 4-Metric Primary Dossier Strip */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" aria-label="Key casework metrics">
+        <div className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-1.5">
+          <p className="text-xs font-medium text-muted">Active complaints</p>
+          <p className="font-mono text-2xl font-semibold tracking-tight text-heading tabular-nums">
             {loading ? '—' : metrics.activeComplaints}
           </p>
-          <p className="mt-1 text-xs text-muted tabular-nums">
-            Total reported loss: <span className="font-mono text-heading">{formatInr(metrics.totalReportedLoss)}</span>
+          <p className="text-xs text-muted tabular-nums">
+            Total reported loss: <span className="font-mono text-heading font-medium">{formatInr(metrics.totalReportedLoss)}</span>
           </p>
         </div>
 
-        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
-          <p className="text-xs font-medium text-muted">Open Early Warning Alerts</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
+        <div className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-1.5">
+          <p className="text-xs font-medium text-muted">Early warning alerts</p>
+          <p className="font-mono text-2xl font-semibold tracking-tight text-heading tabular-nums">
             {loading ? '—' : metrics.openAlertCount}
           </p>
-          <p className="mt-1 text-xs text-muted tabular-nums">
+          <p className="text-xs text-muted tabular-nums">
             Critical priority:{' '}
-            <span className="font-mono font-semibold text-[#991B1B] dark:text-red-400">
+            <span className="font-mono font-medium text-red-700 dark:text-red-400">
               {metrics.criticalAlerts}
             </span>
           </p>
         </div>
 
-        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
-          <p className="text-xs font-medium text-muted">Imminent ATM Windows (0–12h)</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
+        <div className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-1.5">
+          <p className="text-xs font-medium text-muted">Imminent ATM windows (0–12h)</p>
+          <p className="font-mono text-2xl font-semibold tracking-tight text-heading tabular-nums">
             {loading ? '—' : metrics.imminentAtms}
           </p>
-          <p className="mt-1 text-xs text-muted tabular-nums">
-            Scored terminal forecasts:{' '}
-            <span className="font-mono font-semibold text-accent-strong">
+          <p className="text-xs text-muted tabular-nums">
+            Forecast terminals:{' '}
+            <span className="font-mono font-medium text-accent-strong">
               {metrics.totalPredictions}
             </span>
           </p>
         </div>
 
-        <div className="rounded-[6px] border border-border-subtle bg-card p-4">
-          <p className="text-xs font-medium text-muted">Tracked Ledger Transactions</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-heading tabular-nums">
+        <div className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-1.5">
+          <p className="text-xs font-medium text-muted">Ledger transfers</p>
+          <p className="font-mono text-2xl font-semibold tracking-tight text-heading tabular-nums">
             {loading ? '—' : txnTotal}
           </p>
-          <p className="mt-1 text-xs text-muted">
-            PostgreSQL verified edges only
+          <p className="text-xs text-muted font-mono">
+            Verified database records
           </p>
         </div>
       </section>
 
-      {/* Main Analytics + Priority Cash-Out ATMs */}
-      <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-7 rounded-[6px] border border-border-subtle bg-card flex flex-col">
-          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
+      {/* Analytics & Priority ATM Queue */}
+      <section className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        {/* Fraud Typology Bar Chart */}
+        <div className="xl:col-span-7 rounded-[12px] border border-border-subtle bg-card flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle/50 px-4 py-3 sm:px-5">
             <div>
-              <h2 className="text-sm font-semibold text-heading">Reported Loss by Fraud Typology</h2>
-              <p className="text-xs text-muted">Aggregated from active database complaint records (INR Lakhs)</p>
+              <h3 className="text-xs font-semibold tracking-tight text-heading uppercase">
+                Reported loss by fraud typology
+              </h3>
+              <p className="text-[11px] text-muted">Aggregated loss exposure across registered complaints (₹ Lakhs)</p>
             </div>
-            <span className="font-mono text-[11px] text-muted">n = {complaints.length}</span>
+            <span className="font-mono text-[11px] text-muted tabular-nums">
+              n = {complaints.length}
+            </span>
           </div>
 
-          <div className="p-4 h-72">
+          <div className="p-4 sm:p-5 h-72">
             {loading ? (
-              <div className="h-full rounded bg-subtle animate-pulse" />
+              <div className="h-full rounded-[8px] bg-subtle/50 animate-pulse" />
             ) : chartData.length === 0 ? (
               <EmptyDataState
                 title="No complaint data recorded"
-                description="Register a complaint to visualize fraud typology exposure."
+                description="Register cybercrime complaints to visualize fraud typology distributions."
               />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                <BarChart data={chartData} margin={{ top: 8, right: 12, left: -10, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
                   <XAxis
                     dataKey="fraudType"
@@ -292,27 +297,30 @@ export function DashboardPage() {
                     contentStyle={{
                       backgroundColor: chartPalette.tooltipBg,
                       borderColor: chartPalette.tooltipBorder,
-                      borderRadius: '6px',
+                      borderRadius: '8px',
                       fontSize: '12px',
                       color: chartPalette.tooltipText,
                     }}
-                    formatter={(value) => [`₹${Number(value ?? 0)} Lakhs`, 'Reported Loss']}
+                    formatter={(value) => [`₹${Number(value ?? 0)} Lakhs`, 'Reported loss']}
                   />
-                  <Bar dataKey="lossLakhs" fill={chartPalette.bar} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="lossLakhs" fill={chartPalette.bar} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        <div className="xl:col-span-5 rounded-[6px] border border-border-subtle bg-card flex flex-col">
-          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
+        {/* Priority ATM Forecast Queue */}
+        <div className="xl:col-span-5 rounded-[12px] border border-border-subtle bg-card flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle/50 px-4 py-3 sm:px-5">
             <div className="flex items-center gap-2">
-              <Landmark className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-heading">Priority Cash-Out Forecast Queue</h2>
+              <Landmark className="h-4 w-4 text-muted" aria-hidden="true" />
+              <h3 className="text-xs font-semibold tracking-tight text-heading uppercase">
+                Priority cash-out forecast queue
+              </h3>
             </div>
             <Link to="/atm-predictions" className="text-xs font-medium text-accent-strong hover:underline">
-              Full Engine
+              View all
             </Link>
           </div>
 
@@ -321,34 +329,34 @@ export function DashboardPage() {
               <TableSkeleton rows={4} cols={3} />
             ) : priorityAtms.length === 0 ? (
               <EmptyDataState
-                title="No ATM cash-out predictions yet"
-                description="Run the ATM Predictive Engine on an active complaint to surface likely cash-out terminals."
+                title="No ATM forecasts available"
+                description="Run the ATM predictive engine on active complaints to calculate cash-out probability."
               />
             ) : (
               priorityAtms.map((pred) => (
-                <div key={pred.id ?? `${pred.atm_id}-${pred.rank_order}`} className="px-4 py-3 space-y-1.5 hover:bg-subtle">
+                <div key={pred.id ?? `${pred.atm_id}-${pred.rank_order}`} className="px-4 py-3 space-y-1.5 hover:bg-subtle/40 transition-colors">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-heading truncate">
                         {pred.atm_id} · {pred.bank} ({pred.locality})
                       </p>
-                      <p className="text-[11px] text-muted truncate">
-                        {pred.complaint_number ?? 'Linked Case'} · Window{' '}
-                        <span className="font-mono font-semibold text-amber-700 dark:text-amber-300">
+                      <p className="text-[11px] text-muted truncate mt-0.5">
+                        {pred.complaint_number ?? 'Linked case'} · Window{' '}
+                        <span className="font-mono font-medium text-amber-800 dark:text-amber-300">
                           {pred.window}
                         </span>
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-mono text-sm font-bold text-heading tabular-nums">
-                        {Number(pred.risk_score).toFixed(1)}/100
+                      <p className="font-mono text-xs font-semibold text-heading tabular-nums">
+                        {Number(pred.risk_score).toFixed(0)}/100
                       </p>
                       <StatusSignal level={pred.risk_level} />
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2 pt-0.5">
                     <ScoreSourceBadge source={pred.score_source} />
-                    <span className="font-mono text-[11px] text-muted tabular-nums">
+                    <span className="font-mono text-[10px] text-muted tabular-nums">
                       Confidence:{' '}
                       {typeof pred.confidence === 'number'
                         ? `${(pred.confidence * 100).toFixed(0)}%`
@@ -360,37 +368,40 @@ export function DashboardPage() {
             )}
           </div>
           {priorityAtms[0]?.limitations_text ? (
-            <div className="border-t border-border-subtle bg-subtle px-4 py-2 text-[11px] text-muted">
+            <div className="border-t border-border-subtle bg-subtle/40 px-4 py-2 text-[11px] text-muted">
               Note: {priorityAtms[0].limitations_text}
             </div>
           ) : null}
         </div>
       </section>
 
-      {/* Bottom: Alert Triage & Recent Complaints */}
-      <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-6 rounded-[6px] border border-border-subtle bg-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
+      {/* Alert Triage & Recent Complaints Tables */}
+      <section className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        {/* Early Warning Alerts Queue */}
+        <div className="xl:col-span-6 rounded-[12px] border border-border-subtle bg-card overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle/50 px-4 py-3 sm:px-5">
             <div className="flex items-center gap-2">
-              <BellRing className="h-4 w-4 text-[#DC2626] dark:text-red-400" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-heading">Early Warning Alerts</h2>
+              <BellRing className="h-4 w-4 text-muted" aria-hidden="true" />
+              <h3 className="text-xs font-semibold tracking-tight text-heading uppercase">
+                Early warning alerts
+              </h3>
             </div>
             <Link to="/alerts" className="text-xs font-medium text-accent-strong hover:underline">
-              View All
+              View queue
             </Link>
           </div>
 
           {loading ? (
-            <TableSkeleton rows={5} cols={4} />
+            <TableSkeleton rows={4} cols={3} />
           ) : alerts.length === 0 ? (
             <EmptyDataState
-              title="No active alerts"
-              description="Alerts are generated automatically when critical ATM cash-out hotspots or mule bursts are detected."
+              title="No open alerts"
+              description="Alerts are automatically triggered when high-velocity mule bursts or cash-out hotspots emerge."
             />
           ) : (
-            <div className="divide-y divide-border-subtle">
-              {alerts.slice(0, 6).map((alert) => (
-                <div key={alert.id} className="px-4 py-3 space-y-2 hover:bg-subtle">
+            <div className="divide-y divide-border-subtle flex-1">
+              {alerts.slice(0, 5).map((alert) => (
+                <div key={alert.id} className="px-4 py-3 space-y-2 hover:bg-subtle/40 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -400,18 +411,18 @@ export function DashboardPage() {
                           {alert.complaint_number ?? 'System'}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs font-semibold text-heading">{alert.title}</p>
-                      <p className="mt-0.5 text-xs text-body line-clamp-2">{alert.description}</p>
+                      <p className="mt-1 text-xs font-medium text-heading">{alert.title}</p>
+                      <p className="mt-0.5 text-xs text-muted line-clamp-1">{alert.description}</p>
                     </div>
                     <div className="shrink-0 text-right space-y-1">
                       <StatusSignal level={alert.status} />
-                      <p className="font-mono text-[11px] text-muted tabular-nums">
+                      <p className="font-mono text-[10px] text-muted tabular-nums">
                         {formatShortTime(alert.created_at)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
                     <ScoreSourceBadge source={alert.score_source} />
                     {canActOnAlerts && alert.status === 'OPEN' ? (
                       <div className="flex items-center gap-1.5">
@@ -419,19 +430,19 @@ export function DashboardPage() {
                           type="button"
                           disabled={updatingAlertId === alert.id}
                           onClick={() => void handleAlertStatus(alert.id, 'ACKNOWLEDGED')}
-                          className="inline-flex items-center gap-1 rounded-[4px] border border-border-subtle bg-card px-2 py-1 text-[11px] font-medium text-heading hover:bg-highlight disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center gap-1 rounded-[6px] border border-border-subtle bg-card px-2.5 py-1 text-[11px] font-medium text-heading hover:bg-subtle disabled:opacity-50 cursor-pointer transition-colors"
                         >
-                          <Check className="h-3 w-3 text-accent-strong" aria-hidden="true" />
-                          Acknowledge
+                          <Check className="h-3 w-3 text-muted" aria-hidden="true" />
+                          <span>Acknowledge</span>
                         </button>
                         <button
                           type="button"
                           disabled={updatingAlertId === alert.id}
                           onClick={() => void handleAlertStatus(alert.id, 'DISPATCHED')}
-                          className="inline-flex items-center gap-1 rounded-[4px] border border-amber-300 bg-[#FEF3C7] px-2 py-1 text-[11px] font-semibold text-[#92400E] hover:opacity-90 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-200 disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center gap-1 rounded-[6px] bg-accent-strong px-2.5 py-1 text-[11px] font-medium text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer transition-colors"
                         >
                           <Send className="h-3 w-3" aria-hidden="true" />
-                          Dispatch Team
+                          <span>Dispatch team</span>
                         </button>
                       </div>
                     ) : null}
@@ -442,37 +453,42 @@ export function DashboardPage() {
           )}
         </div>
 
-        <div className="xl:col-span-6 rounded-[6px] border border-border-subtle bg-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-3">
-            <h2 className="text-sm font-semibold text-heading">Recent Cybercrime Complaints</h2>
+        {/* Recent Cybercrime Complaints Ledger */}
+        <div className="xl:col-span-6 rounded-[12px] border border-border-subtle bg-card overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle/50 px-4 py-3 sm:px-5">
+            <h3 className="text-xs font-semibold tracking-tight text-heading uppercase">
+              Recent complaints registry
+            </h3>
             <Link to="/complaints" className="text-xs font-medium text-accent-strong hover:underline">
-              Manage Cases
+              Open ledger
             </Link>
           </div>
 
           {loading ? (
-            <TableSkeleton rows={5} cols={4} />
+            <TableSkeleton rows={4} cols={4} />
           ) : complaints.length === 0 ? (
             <EmptyDataState
               title="No complaints registered"
-              description="Register a cybercrime complaint to start tracing stolen funds."
+              description="Register a cybercrime complaint to begin tracing stolen fund trajectories."
             />
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto flex-1">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-border-subtle bg-highlight text-[11px] font-semibold uppercase tracking-wider text-heading">
+                <thead className="border-b border-border-subtle bg-subtle/30 text-[11px] font-medium text-muted">
                   <tr>
-                    <th className="px-4 py-2.5">Case ID</th>
-                    <th className="px-4 py-2.5">Victim & Typology</th>
-                    <th className="px-4 py-2.5 text-right">Amount</th>
-                    <th className="px-4 py-2.5">Status</th>
+                    <th className="px-4 py-2.5 font-normal">Case reference</th>
+                    <th className="px-4 py-2.5 font-normal">Victim & typology</th>
+                    <th className="px-4 py-2.5 font-normal text-right">Reported loss</th>
+                    <th className="px-4 py-2.5 font-normal">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-subtle">
-                  {complaints.slice(0, 6).map((cmp) => (
-                    <tr key={cmp.id} className="hover:bg-subtle">
-                      <td className="px-4 py-2.5 font-mono font-medium text-accent-strong whitespace-nowrap">
-                        {cmp.complaint_number}
+                  {complaints.slice(0, 5).map((cmp) => (
+                    <tr key={cmp.id} className="hover:bg-subtle/40 transition-colors">
+                      <td className="px-4 py-2.5 font-mono font-medium text-heading whitespace-nowrap">
+                        <Link to={`/complaints`} className="hover:text-accent-strong transition-colors">
+                          {cmp.complaint_number}
+                        </Link>
                       </td>
                       <td className="px-4 py-2.5">
                         <p className="font-medium text-heading">{cmp.victim_name}</p>

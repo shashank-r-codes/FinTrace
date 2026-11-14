@@ -17,9 +17,11 @@ import complaintsRoutes from './modules/complaints/complaints.routes.js';
 import evidenceRoutes from './modules/evidence/evidence.routes.js';
 import graphRoutes from './modules/graph/graph.routes.js';
 import investigationsRoutes from './modules/investigations/investigations.routes.js';
+import interventionsRoutes from './modules/interventions/interventions.routes.js';
 import mlRoutes from './modules/ml/ml.routes.js';
 import { atmsRouter, predictionsRouter } from './modules/predictions/predictions.routes.js';
 import reportsRoutes from './modules/reports/reports.routes.js';
+import screeningRoutes from './modules/screening/screening.routes.js';
 import transactionsRoutes from './modules/transactions/transactions.routes.js';
 import usersRoutes from './modules/users/users.routes.js';
 
@@ -58,12 +60,34 @@ export function createApp() {
   app.get('/api/v1/health', async (_req, res) => {
     try {
       await query('SELECT 1');
+      let preventionStatus = 'READY';
+      let preventionCounts = { accounts: 0, screening: 0, interventions: 0 };
+      try {
+        const pCheck = await query(`
+          SELECT 
+            (SELECT COUNT(*) FROM account_intelligence_profiles)::int AS accounts,
+            (SELECT COUNT(*) FROM transaction_screening_requests)::int AS screening,
+            (SELECT COUNT(*) FROM transaction_interventions)::int AS interventions
+        `);
+        if (pCheck.rows[0]) {
+          preventionCounts = pCheck.rows[0];
+        }
+      } catch {
+        preventionStatus = 'MIGRATION_PENDING';
+      }
+
       res.json({
         success: true,
         service: 'fintrace-backend',
         status: 'healthy',
         database: 'connected',
         syntheticDemo: true,
+        preventionLayer: {
+          status: preventionStatus,
+          accountProfilesCount: preventionCounts.accounts,
+          screeningRequestsCount: preventionCounts.screening,
+          interventionsCount: preventionCounts.interventions,
+        },
         timestamp: new Date().toISOString(),
       });
     } catch {
@@ -81,6 +105,8 @@ export function createApp() {
   app.use('/api/v1/citizen', citizenRoutes);
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/complaints', complaintsRoutes);
+  app.use('/api/v1/screening', screeningRoutes);
+  app.use('/api/v1/interventions', interventionsRoutes);
   app.use('/api/v1/accounts', accountsRoutes);
   app.use('/api/v1/transactions', transactionsRoutes);
   app.use('/api/v1/alerts', alertsRoutes);

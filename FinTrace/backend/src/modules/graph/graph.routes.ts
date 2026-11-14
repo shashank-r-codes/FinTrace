@@ -24,6 +24,21 @@ const pathsQuerySchema = z.object({
   maxDepth: z.coerce.number().int().min(1).max(8).default(5),
 });
 
+const subgraphQuerySchema = z.object({
+  direction: z.enum(['forward', 'reverse', 'both']).default('both'),
+  depth: z.coerce.number().int().min(1).max(5).default(2),
+  complaintId: z.string().uuid().optional(),
+});
+
+const muleClustersQuerySchema = z.object({
+  minClusterSize: z.coerce.number().int().min(2).max(20).default(2),
+  minRiskScore: z.coerce.number().min(0).max(100).default(30),
+});
+
+const accountParamSchema = z.object({
+  accountId: z.string().min(4),
+});
+
 const uuidParamSchema = z.object({
   id: z.string().uuid(),
 });
@@ -270,6 +285,71 @@ router.get(
     try {
       const { id } = req.validatedParams!;
       const data = await callMlGraphService(`/graph/metrics/${id}`);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ---------------- PHASE 5: PREVENTION GRAPH INTELLIGENCE & MULE SYNDICATE ENDPOINTS ----------------
+
+/**
+ * Enriched account subgraph with risk propagation and intersecting mule syndicate clusters.
+ */
+router.get(
+  '/account/:accountId/subgraph',
+  validate({ params: accountParamSchema, query: subgraphQuerySchema }),
+  async (
+    req: ValidatedRequest<unknown, z.infer<typeof subgraphQuerySchema>, z.infer<typeof accountParamSchema>>,
+    res,
+    next
+  ) => {
+    try {
+      const { accountId } = req.validatedParams!;
+      const q = req.validatedQuery!;
+      const accountUuid = await resolveAccountUuid(accountId);
+
+      const data = await callMlGraphService(
+        `/graph/account/${accountUuid}/subgraph?depth=${q.depth}&direction=${q.direction}`
+      );
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Mule syndicate cluster detection across cycles, fan-out dispersals, and funnel accumulators.
+ */
+router.get(
+  '/mule-clusters',
+  validate({ query: muleClustersQuerySchema }),
+  async (req: ValidatedRequest<unknown, z.infer<typeof muleClustersQuerySchema>>, res, next) => {
+    try {
+      const q = req.validatedQuery!;
+      const data = await callMlGraphService(
+        `/graph/mule-clusters?min_cluster_size=${q.minClusterSize}&min_risk_score=${q.minRiskScore}`
+      );
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Graph-derived account intelligence (centrality, distance to fraud, cycle status, counterparties).
+ */
+router.get(
+  '/account/:accountId/intelligence',
+  validate({ params: accountParamSchema }),
+  async (req: ValidatedRequest<unknown, Record<string, unknown>, z.infer<typeof accountParamSchema>>, res, next) => {
+    try {
+      const { accountId } = req.validatedParams!;
+      const accountUuid = await resolveAccountUuid(accountId);
+      const data = await callMlGraphService(`/graph/account/${accountUuid}/graph-intelligence`);
       res.json({ success: true, data });
     } catch (err) {
       next(err);

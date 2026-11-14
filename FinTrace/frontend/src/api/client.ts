@@ -1,5 +1,7 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:4000/api/v1';
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL)
+    ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, '')
+    : '/api/v1';
 
 const ACCESS_KEY = 'fintrace_access_token';
 const REFRESH_KEY = 'fintrace_refresh_token';
@@ -7,12 +9,14 @@ const REFRESH_KEY = 'fintrace_refresh_token';
 export class ApiError extends Error {
   status: number;
   code: string;
+  path?: string;
 
-  constructor(message: string, status: number, code = 'API_ERROR') {
+  constructor(message: string, status: number, code = 'API_ERROR', path?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.path = path;
   }
 }
 
@@ -91,38 +95,64 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   };
 
   let accessToken = tokenStorage.getAccess();
-  let response = await fetch(url, {
-    method: options.method ?? 'GET',
-    headers: buildHeaders(accessToken),
-    body:
-      options.body === undefined
-        ? undefined
-        : isFormData
-          ? (options.body as FormData)
-          : JSON.stringify(options.body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: options.method ?? 'GET',
+      headers: buildHeaders(accessToken),
+      body:
+        options.body === undefined
+          ? undefined
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
+    });
+  } catch (_netErr) {
+    throw new ApiError(
+      'Network connection failed. Unable to reach the FinTrace API server.',
+      0,
+      'NETWORK_ERROR',
+      path
+    );
+  }
 
   if (response.status === 401 && !options.skipAuth) {
     const renewed = await attemptTokenRefresh();
     if (renewed) {
       accessToken = renewed;
-      response = await fetch(url, {
-        method: options.method ?? 'GET',
-        headers: buildHeaders(accessToken),
-        body:
-          options.body === undefined
-            ? undefined
-            : isFormData
-              ? (options.body as FormData)
-              : JSON.stringify(options.body),
-      });
+      try {
+        response = await fetch(url, {
+          method: options.method ?? 'GET',
+          headers: buildHeaders(accessToken),
+          body:
+            options.body === undefined
+              ? undefined
+              : isFormData
+                ? (options.body as FormData)
+                : JSON.stringify(options.body),
+        });
+      } catch (_netErr) {
+        throw new ApiError(
+          'Network connection failed after token refresh. Unable to reach the FinTrace API server.',
+          0,
+          'NETWORK_ERROR',
+          path
+        );
+      }
     }
   }
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     if (!response.ok) {
-      throw new ApiError(`Request failed with status ${response.status}`, response.status);
+      throw new ApiError(
+        response.status === 404
+          ? `API endpoint not found on server (${options.method ?? 'GET'} ${path})`
+          : `Request failed with status ${response.status}`,
+        response.status,
+        response.status === 404 ? 'NOT_FOUND' : 'HTTP_ERROR',
+        path
+      );
     }
     return (await response.text()) as unknown as T;
   }
@@ -136,7 +166,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (!response.ok) {
     const msg = payload.error?.message || payload.message || `Request failed (${response.status})`;
     const code = payload.error?.code || 'HTTP_ERROR';
-    throw new ApiError(msg, response.status, code);
+    throw new ApiError(msg, response.status, code, path);
   }
 
   return payload as T;
@@ -150,19 +180,28 @@ export async function apiDownloadBlob(path: string, fallbackFilename: string): P
   const url = `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
   let accessToken = tokenStorage.getAccess();
 
-  let response = await fetch(url, {
-    method: 'GET',
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    });
+  } catch (_netErr) {
+    throw new ApiError('Network connection failed. Unable to download file.', 0, 'NETWORK_ERROR', path);
+  }
 
   if (response.status === 401) {
     const renewed = await attemptTokenRefresh();
     if (renewed) {
       accessToken = renewed;
-      response = await fetch(url, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      try {
+        response = await fetch(url, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      } catch (_netErr) {
+        throw new ApiError('Network connection failed. Unable to download file.', 0, 'NETWORK_ERROR', path);
+      }
     }
   }
 
@@ -174,7 +213,7 @@ export async function apiDownloadBlob(path: string, fallbackFilename: string): P
     } catch {
       // Ignore non-JSON error body
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, 'DOWNLOAD_ERROR', path);
   }
 
   const blob = await response.blob();
@@ -191,4 +230,3 @@ export async function apiDownloadBlob(path: string, fallbackFilename: string): P
   anchor.remove();
   URL.revokeObjectURL(objectUrl);
 }
-

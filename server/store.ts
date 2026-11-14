@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {
   AccountSeed,
+  AccountIntelligenceSeed,
   AlertSeed,
   AtmPredictionSeed,
   AtmSeed,
@@ -9,11 +10,19 @@ import {
   ComplaintSeed,
   ComplaintStatusHistorySeed,
   EvidenceSeed,
+  FraudIndicatorSeed,
   generateSyntheticDataset,
   InstitutionSeed,
+  InterventionAuditSeed,
+  InterventionSeed,
   InvestigationSeed,
+  RiskAssessmentSeed,
   RoleSeed,
+  ScreeningRequestSeed,
+  ScreeningThresholdSeed,
   SuspiciousAccountSeed,
+  SuspiciousRelationshipSeed,
+  SystemSettingSeed,
   TransactionSeed,
   UserSeed,
   VictimSeed,
@@ -192,6 +201,11 @@ export interface GraphNodeMetrics {
   velocity_1h: number;
   pagerank: number;
   betweenness_centrality: number;
+  risk_score?: number;
+  risk_classification?: string;
+  propagated_risk?: number;
+  mule_cluster_id?: string | null;
+  mule_cluster_role?: string | null;
 }
 
 export interface FinTraceStore {
@@ -216,6 +230,30 @@ export interface FinTraceStore {
   auditLogs: StoredAuditLog[];
   complaintStatusHistory: StoredComplaintStatusHistory[];
   citizenNotifications: StoredCitizenNotification[];
+  screeningThresholds: ScreeningThresholdSeed[];
+  systemSettings: SystemSettingSeed[];
+  fraudIndicators: FraudIndicatorSeed[];
+  accountIntelligenceProfiles: AccountIntelligenceSeed[];
+  accountRiskHistory: AccountRiskHistoryRecord[];
+  screeningRequests: ScreeningRequestSeed[];
+  riskAssessments: RiskAssessmentSeed[];
+  interventions: InterventionSeed[];
+  suspiciousRelationships: SuspiciousRelationshipSeed[];
+  interventionAuditLogs: InterventionAuditSeed[];
+}
+
+export interface AccountRiskHistoryRecord {
+  id: string;
+  account_id: string;
+  previous_score: number | null;
+  new_score: number;
+  previous_classification: string | null;
+  new_classification: string;
+  trigger_event: string;
+  trigger_reference_id?: string | null;
+  reasons_json: string[];
+  assessed_by: string;
+  recorded_at: string;
 }
 
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -337,6 +375,57 @@ function createInitialStore(): FinTraceStore {
       ...n,
       created_at: n.created_at.toISOString(),
     })),
+    screeningThresholds: seed.screeningThresholds,
+    systemSettings: seed.systemSettings,
+    fraudIndicators: seed.fraudIndicators,
+    accountIntelligenceProfiles: seed.accountIntelligenceProfiles,
+    accountRiskHistory: seed.accountIntelligenceProfiles.flatMap((prof, i) => {
+      const records: AccountRiskHistoryRecord[] = [
+        {
+          id: `hist-base-${prof.account_id.slice(0, 8)}`,
+          account_id: prof.account_id,
+          previous_score: null,
+          new_score: prof.risk_score,
+          previous_classification: null,
+          new_classification: prof.risk_classification,
+          trigger_event:
+            prof.account_status === 'CONFIRMED_FRAUD_LINKED'
+              ? 'COMPLAINT_EVIDENCE_LINKAGE'
+              : prof.account_status === 'SUSPECTED_MULE_ACCOUNT'
+                ? 'MULE_NETWORK_DETECTION'
+                : 'BASELINE_ACCOUNT_ONBOARDING',
+          trigger_reference_id:
+            prof.account_status === 'CONFIRMED_FRAUD_LINKED' ? 'CMP-2024-001' : null,
+          reasons_json: prof.risk_reasons,
+          assessed_by: 'SYSTEM',
+          recorded_at: new Date(Date.now() - 3600 * 1000 * (48 + (i % 24))).toISOString(),
+        },
+      ];
+      if (prof.risk_score >= 50) {
+        records.push({
+          id: `hist-subseq-${prof.account_id.slice(0, 8)}`,
+          account_id: prof.account_id,
+          previous_score: Math.max(10, prof.risk_score - 25),
+          new_score: prof.risk_score,
+          previous_classification: 'Low',
+          new_classification: prof.risk_classification,
+          trigger_event: 'VELOCITY_ACCELERATION_BURST',
+          trigger_reference_id: null,
+          reasons_json:
+            prof.mule_indicators.length > 0
+              ? prof.mule_indicators
+              : ['Rapid pass-through acceleration detected in screening pipeline'],
+          assessed_by: 'AUTOMATED_SCREENING_SERVICE',
+          recorded_at: new Date(Date.now() - 3600 * 1000 * (6 + (i % 6))).toISOString(),
+        });
+      }
+      return records;
+    }),
+    screeningRequests: seed.screeningRequests,
+    riskAssessments: seed.riskAssessments,
+    interventions: seed.interventions,
+    suspiciousRelationships: seed.suspiciousRelationships,
+    interventionAuditLogs: seed.interventionAuditLogs,
     auditLogs: [
       {
         id: crypto.randomUUID(),
@@ -530,6 +619,16 @@ function computeSubgraphMetrics(
       }
 
       const susp = suspByAcc.get(id);
+      const intel = store.accountIntelligenceProfiles.find((p) => p.account_id === id);
+      const riskScore = intel?.risk_score ?? (
+        susp?.classification === 'SUSPECTED_MULE' || susp?.classification === 'CASH_OUT_CANDIDATE' ? 75 :
+        susp?.classification === 'LAYERING_NODE' ? 65 : 10
+      );
+      const riskCls = intel?.risk_classification ?? (
+        susp?.classification === 'SUSPECTED_MULE' || susp?.classification === 'CASH_OUT_CANDIDATE' ? 'High' :
+        susp?.classification === 'LAYERING_NODE' ? 'Medium' : 'Low'
+      );
+
       return {
         id,
         account_number: acc?.account_number ?? id,
@@ -539,6 +638,8 @@ function computeSubgraphMetrics(
         is_frozen: acc?.is_frozen ?? false,
         suspicious_classification: susp?.classification ?? null,
         mule_probability: susp?.mule_probability ?? null,
+        risk_score: riskScore,
+        risk_classification: riskCls,
         in_degree: ins.length,
         out_degree: outs.length,
         fan_in: fanIn,
@@ -781,6 +882,588 @@ export function findSuspiciousPaths(
   dfs(sourceAccountId, [sourceAccountId], [], new Set([sourceAccountId]));
   return results.sort((a, b) => b.bottleneck_amount - a.bottleneck_amount);
 }
+
+// ---------------- PHASE 5: MULE CLUSTER DETECTION & GRAPH INTELLIGENCE ----------------
+
+export interface StoredMuleClusterMember {
+  account_id: string;
+  account_number: string;
+  holder_name: string;
+  bank_name?: string;
+  role: 'SOURCE' | 'INTERMEDIARY_MULE' | 'CASH_OUT_SINK' | 'COORDINATOR' | 'MEMBER';
+  risk_score: number;
+  risk_classification: string;
+  mule_probability: number;
+  in_degree: number;
+  out_degree: number;
+  total_inflow: number;
+  total_outflow: number;
+  is_frozen: boolean;
+}
+
+export interface StoredMuleCluster {
+  cluster_id: string;
+  cluster_type:
+    | 'MULE_RING_CYCLE'
+    | 'FAN_OUT_DISPERSAL'
+    | 'RAPID_PASS_THROUGH_CHAIN'
+    | 'FUNNEL_COLLECTION'
+    | 'SUSPICIOUS_COMMUNITY';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  member_count: number;
+  members: StoredMuleClusterMember[];
+  total_flow_amount: number;
+  transaction_count: number;
+  avg_transfer_latency_sec: number | null;
+  has_cycle: boolean;
+  cycle_nodes: string[];
+  risk_score: number;
+  identified_patterns: string[];
+  recommended_action: string;
+  detected_at: string;
+}
+
+export function detectMuleClusters(
+  store: FinTraceStore,
+  minClusterSize = 2,
+  minRiskScore = 30
+) {
+  const accMap = new Map(store.accounts.map((a) => [a.id, a]));
+  const intelMap = new Map(store.accountIntelligenceProfiles.map((p) => [p.account_id, p]));
+  const suspMap = new Map(store.suspiciousAccounts.map((s) => [s.account_id, s]));
+
+  const bySource = new Map<string, StoredTransaction[]>();
+  const byTarget = new Map<string, StoredTransaction[]>();
+  for (const tx of store.transactions) {
+    const sList = bySource.get(tx.from_account) ?? [];
+    sList.push(tx);
+    bySource.set(tx.from_account, sList);
+
+    const tList = byTarget.get(tx.to_account) ?? [];
+    tList.push(tx);
+    byTarget.set(tx.to_account, tList);
+  }
+
+  const clusters: StoredMuleCluster[] = [];
+  const seenSignatures = new Set<string>();
+
+  const getBankName = (accId: string) => {
+    const acc = accMap.get(accId);
+    if (!acc) return 'FinTrace Bank';
+    return store.institutions.find((i) => i.id === acc.institution_id)?.name ?? 'FinTrace Bank';
+  };
+
+  const getMuleProb = (accId: string) => {
+    const susp = suspMap.get(accId);
+    if (susp?.mule_probability !== undefined && susp.mule_probability !== null) return susp.mule_probability;
+    const intel = intelMap.get(accId);
+    if (intel?.account_status === 'CONFIRMED_FRAUD_LINKED') return 0.98;
+    if (intel?.account_status === 'SUSPECTED_MULE_ACCOUNT') return 0.85;
+    return 0.2;
+  };
+
+  // A. Cycle rings (MULE_RING_CYCLE)
+  const allNodeIds = Array.from(new Set(store.transactions.flatMap((t) => [t.from_account, t.to_account])));
+  const adj = new Map<string, string[]>();
+  for (const id of allNodeIds) {
+    adj.set(id, Array.from(new Set((bySource.get(id) ?? []).map((e) => e.to_account))));
+  }
+
+  const cycles: string[][] = [];
+  const seenCycleKeys = new Set<string>();
+
+  const dfsCycle = (start: string, curr: string, path: string[], visited: Set<string>) => {
+    if (cycles.length >= 15 || path.length > 5) return;
+    for (const nxt of adj.get(curr) ?? []) {
+      if (nxt === start && path.length >= 2) {
+        const minIdx = path.reduce((best, val, idx) => (val < path[best] ? idx : best), 0);
+        const canonical = [...path.slice(minIdx), ...path.slice(0, minIdx)].join('->');
+        if (!seenCycleKeys.has(canonical)) {
+          seenCycleKeys.add(canonical);
+          cycles.push([...path]);
+        }
+      } else if (!visited.has(nxt) && nxt > start) {
+        visited.add(nxt);
+        path.push(nxt);
+        dfsCycle(start, nxt, path, visited);
+        path.pop();
+        visited.delete(nxt);
+      }
+    }
+  };
+
+  for (const start of [...allNodeIds].sort()) {
+    dfsCycle(start, start, [start], new Set([start]));
+  }
+
+  for (const cycle of cycles) {
+    const sig = [...cycle].sort().join('-');
+    if (seenSignatures.has(sig)) continue;
+    seenSignatures.add(sig);
+
+    const cycleTxs = store.transactions.filter(
+      (t) => cycle.includes(t.from_account) && cycle.includes(t.to_account)
+    );
+    const totalAmt = cycleTxs.reduce((s, t) => s + Number(t.amount), 0);
+
+    const members: StoredMuleClusterMember[] = cycle.map((n) => {
+      const acc = accMap.get(n);
+      const intel = intelMap.get(n);
+      const susp = suspMap.get(n);
+      const ins = cycleTxs.filter((t) => t.to_account === n);
+      const outs = cycleTxs.filter((t) => t.from_account === n);
+
+      const rScore = intel?.risk_score ?? (
+        intel?.account_status === 'CONFIRMED_FRAUD_LINKED' ? 95 :
+        susp?.classification === 'SUSPECTED_MULE' || susp?.classification === 'CASH_OUT_CANDIDATE' ? 75 : 70
+      );
+
+      return {
+        account_id: n,
+        account_number: acc?.account_number ?? n,
+        holder_name: acc?.holder_name ?? 'Unknown',
+        bank_name: getBankName(n),
+        role: 'INTERMEDIARY_MULE',
+        risk_score: rScore,
+        risk_classification: intel?.risk_classification ?? (susp?.classification === 'SUSPECTED_MULE' ? 'High' : 'Medium'),
+        mule_probability: getMuleProb(n),
+        in_degree: (byTarget.get(n) ?? []).length,
+        out_degree: (bySource.get(n) ?? []).length,
+        total_inflow: Math.round(ins.reduce((s, t) => s + Number(t.amount), 0) * 100) / 100,
+        total_outflow: Math.round(outs.reduce((s, t) => s + Number(t.amount), 0) * 100) / 100,
+        is_frozen: acc?.is_frozen ?? false,
+      };
+    });
+
+    const maxScore = Math.max(...members.map((m) => m.risk_score), 75);
+    const hasFraud = members.some((m) => m.risk_classification === 'Critical' || m.risk_score >= 90);
+    const clusterScore = hasFraud ? Math.max(maxScore, 92) : maxScore;
+    const severity = clusterScore >= 85 || totalAmt >= 300000 ? 'CRITICAL' : 'HIGH';
+
+    clusters.push({
+      cluster_id: `RING-${String(clusters.length + 1).padStart(3, '0')}`,
+      cluster_type: 'MULE_RING_CYCLE',
+      severity,
+      member_count: members.length,
+      members,
+      total_flow_amount: Math.round(totalAmt * 100) / 100,
+      transaction_count: cycleTxs.length,
+      avg_transfer_latency_sec: 420,
+      has_cycle: true,
+      cycle_nodes: cycle,
+      risk_score: Math.round(clusterScore * 10) / 10,
+      identified_patterns: [
+        `Circular fund layering loop across ${cycle.length} interconnected nodes`,
+        'Near-zero economic balance retention across participants',
+        'High-velocity cross-account pass-through',
+      ],
+      recommended_action:
+        'Execute simultaneous preventive lien across all ring accounts to prevent capital dispersal.',
+      detected_at: new Date().toISOString(),
+    });
+  }
+
+  // B. Fan-Out Dispersals (1-to-many smurfing)
+  for (const [nodeId, outs] of bySource.entries()) {
+    const targets = Array.from(new Set(outs.map((t) => t.to_account)));
+    if (targets.length >= 3) {
+      const sig = `FANOUT-${nodeId}`;
+      if (seenSignatures.has(sig)) continue;
+      seenSignatures.add(sig);
+
+      const srcAcc = accMap.get(nodeId);
+      const srcIntel = intelMap.get(nodeId);
+      const srcSusp = suspMap.get(nodeId);
+      const totalAmt = outs.reduce((s, t) => s + Number(t.amount), 0);
+
+      const members: StoredMuleClusterMember[] = [
+        {
+          account_id: nodeId,
+          account_number: srcAcc?.account_number ?? nodeId,
+          holder_name: srcAcc?.holder_name ?? 'Unknown',
+          bank_name: getBankName(nodeId),
+          role: 'SOURCE',
+          risk_score: srcIntel?.risk_score ?? (srcIntel?.account_status === 'CONFIRMED_FRAUD_LINKED' ? 95 : 75),
+          risk_classification: srcIntel?.risk_classification ?? (srcSusp?.classification === 'SUSPECTED_MULE' ? 'High' : 'Medium'),
+          mule_probability: getMuleProb(nodeId),
+          in_degree: (byTarget.get(nodeId) ?? []).length,
+          out_degree: outs.length,
+          total_inflow: 0,
+          total_outflow: Math.round(totalAmt * 100) / 100,
+          is_frozen: srcAcc?.is_frozen ?? false,
+        },
+      ];
+
+      for (const tgt of targets) {
+        const tgtAcc = accMap.get(tgt);
+        const tgtIntel = intelMap.get(tgt);
+        const tgtSusp = suspMap.get(tgt);
+        const tgtIns = outs.filter((t) => t.to_account === tgt);
+        const tgtOuts = bySource.get(tgt) ?? [];
+
+        members.push({
+          account_id: tgt,
+          account_number: tgtAcc?.account_number ?? tgt,
+          holder_name: tgtAcc?.holder_name ?? 'Unknown',
+          bank_name: getBankName(tgt),
+          role: tgtOuts.length === 0 ? 'CASH_OUT_SINK' : 'INTERMEDIARY_MULE',
+          risk_score: tgtIntel?.risk_score ?? (tgtSusp?.classification === 'SUSPECTED_MULE' ? 70 : 60),
+          risk_classification: tgtIntel?.risk_classification ?? (tgtSusp?.classification === 'SUSPECTED_MULE' ? 'High' : 'Medium'),
+          mule_probability: getMuleProb(tgt),
+          in_degree: (byTarget.get(tgt) ?? []).length,
+          out_degree: tgtOuts.length,
+          total_inflow: Math.round(tgtIns.reduce((s, t) => s + Number(t.amount), 0) * 100) / 100,
+          total_outflow: 0,
+          is_frozen: tgtAcc?.is_frozen ?? false,
+        });
+      }
+
+      const maxScore = Math.max(...members.map((m) => m.risk_score));
+      if (maxScore >= minRiskScore) {
+        clusters.push({
+          cluster_id: `DISPERSAL-${String(clusters.length + 1).padStart(3, '0')}`,
+          cluster_type: 'FAN_OUT_DISPERSAL',
+          severity: maxScore >= 80 ? 'CRITICAL' : 'HIGH',
+          member_count: members.length,
+          members,
+          total_flow_amount: Math.round(totalAmt * 100) / 100,
+          transaction_count: outs.length,
+          avg_transfer_latency_sec: 300,
+          has_cycle: false,
+          cycle_nodes: [],
+          risk_score: Math.round(maxScore * 10) / 10,
+          identified_patterns: [
+            `1-to-${targets.length} fan-out dispersal pattern (smurfing/layering)`,
+            'Rapid fund dispersion below standard reporting thresholds',
+          ],
+          recommended_action:
+            'Halt outbound clearing on source hub and inspect linked beneficiary endpoints.',
+          detected_at: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  // C. Funnel Collections (many-to-1 accumulator)
+  for (const [nodeId, ins] of byTarget.entries()) {
+    const senders = Array.from(new Set(ins.map((t) => t.from_account)));
+    if (senders.length >= 3) {
+      const sig = `FUNNEL-${nodeId}`;
+      if (seenSignatures.has(sig)) continue;
+      seenSignatures.add(sig);
+
+      const acc = accMap.get(nodeId);
+      const intel = intelMap.get(nodeId);
+      const susp = suspMap.get(nodeId);
+      const totalAmt = ins.reduce((s, t) => s + Number(t.amount), 0);
+
+      const members: StoredMuleClusterMember[] = [
+        {
+          account_id: nodeId,
+          account_number: acc?.account_number ?? nodeId,
+          holder_name: acc?.holder_name ?? 'Unknown',
+          bank_name: getBankName(nodeId),
+          role: 'COORDINATOR',
+          risk_score: intel?.risk_score ?? (intel?.account_status === 'CONFIRMED_FRAUD_LINKED' ? 95 : 75),
+          risk_classification: intel?.risk_classification ?? (susp?.classification === 'SUSPECTED_MULE' ? 'High' : 'Medium'),
+          mule_probability: getMuleProb(nodeId),
+          in_degree: ins.length,
+          out_degree: (bySource.get(nodeId) ?? []).length,
+          total_inflow: Math.round(totalAmt * 100) / 100,
+          total_outflow: 0,
+          is_frozen: acc?.is_frozen ?? false,
+        },
+      ];
+
+      for (const src of senders) {
+        const srcAcc = accMap.get(src);
+        const srcIntel = intelMap.get(src);
+        const srcSusp = suspMap.get(src);
+        const srcOuts = ins.filter((t) => t.from_account === src);
+
+        members.push({
+          account_id: src,
+          account_number: srcAcc?.account_number ?? src,
+          holder_name: srcAcc?.holder_name ?? 'Unknown',
+          bank_name: getBankName(src),
+          role: 'SOURCE',
+          risk_score: srcIntel?.risk_score ?? (srcSusp?.classification === 'SUSPECTED_MULE' ? 65 : 45),
+          risk_classification: srcIntel?.risk_classification ?? (srcSusp?.classification === 'SUSPECTED_MULE' ? 'High' : 'Medium'),
+          mule_probability: getMuleProb(src),
+          in_degree: (byTarget.get(src) ?? []).length,
+          out_degree: (bySource.get(src) ?? []).length,
+          total_inflow: 0,
+          total_outflow: Math.round(srcOuts.reduce((s, t) => s + Number(t.amount), 0) * 100) / 100,
+          is_frozen: srcAcc?.is_frozen ?? false,
+        });
+      }
+
+      const maxScore = Math.max(...members.map((m) => m.risk_score));
+      if (maxScore >= minRiskScore) {
+        clusters.push({
+          cluster_id: `FUNNEL-${String(clusters.length + 1).padStart(3, '0')}`,
+          cluster_type: 'FUNNEL_COLLECTION',
+          severity: maxScore >= 70 ? 'HIGH' : 'MEDIUM',
+          member_count: members.length,
+          members,
+          total_flow_amount: Math.round(totalAmt * 100) / 100,
+          transaction_count: ins.length,
+          avg_transfer_latency_sec: 600,
+          has_cycle: false,
+          cycle_nodes: [],
+          risk_score: Math.round(maxScore * 10) / 10,
+          identified_patterns: [
+            `${senders.length}-to-1 funnel collection (consolidation node)`,
+            'Multiple unrelated accounts feeding into single collection point',
+          ],
+          recommended_action:
+            'Freeze collector account withdrawals; trace and notify originator banks.',
+          detected_at: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  clusters.sort((a, b) => b.risk_score - a.risk_score || b.total_flow_amount - a.total_flow_amount);
+
+  const flaggedAccIds = new Set<string>();
+  let totalExposure = 0;
+  let highRiskCount = 0;
+  for (const cl of clusters) {
+    totalExposure += cl.total_flow_amount;
+    if (cl.risk_score >= 75 || cl.severity === 'CRITICAL' || cl.severity === 'HIGH') {
+      highRiskCount++;
+    }
+    for (const m of cl.members) {
+      flaggedAccIds.add(m.account_id);
+    }
+  }
+
+  return {
+    clusters,
+    total_clusters: clusters.length,
+    high_risk_clusters: highRiskCount,
+    total_flagged_accounts: flaggedAccIds.size,
+    total_exposure_amount: Math.round(totalExposure * 100) / 100,
+  };
+}
+
+export function extractAccountGraphIntelligence(store: FinTraceStore, accountId: string) {
+  const acc = store.accounts.find((a) => a.id === accountId);
+  if (!acc) return null;
+
+  const { graph } = traceAccountGraph(store, accountId, 'both', 2);
+  const nodeStats = graph.nodes.find((n) => n.id === accountId);
+
+  // Find distance to nearest fraud account
+  const fraudNodes = graph.nodes.filter(
+    (n) =>
+      n.risk_classification === 'Critical' ||
+      (n.risk_score ?? 0) >= 85 ||
+      (n.mule_probability ?? 0) >= 0.8
+  );
+
+  let minDistance: number | null = null;
+  let nearestFraudId: string | null = null;
+
+  const adj = new Map<string, string[]>();
+  for (const e of graph.edges) {
+    const listU = adj.get(e.from_account) ?? [];
+    listU.push(e.to_account);
+    adj.set(e.from_account, listU);
+
+    const listV = adj.get(e.to_account) ?? [];
+    listV.push(e.from_account);
+    adj.set(e.to_account, listV);
+  }
+
+  for (const fn of fraudNodes) {
+    if (fn.id === accountId) {
+      minDistance = 0;
+      nearestFraudId = fn.id;
+      break;
+    }
+    const visited = new Set<string>([accountId]);
+    const queue: Array<{ id: string; d: number }> = [{ id: accountId, d: 0 }];
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (cur.id === fn.id) {
+        if (minDistance === null || cur.d < minDistance) {
+          minDistance = cur.d;
+          nearestFraudId = fn.id;
+        }
+        break;
+      }
+      for (const nxt of adj.get(cur.id) ?? []) {
+        if (!visited.has(nxt)) {
+          visited.add(nxt);
+          queue.push({ id: nxt, d: cur.d + 1 });
+        }
+      }
+    }
+  }
+
+  const baseFraudRisk = nearestFraudId ? 95 : 0;
+  const propagatedRisk = minDistance !== null ? Math.round(baseFraudRisk * Math.pow(0.65, minDistance) * 10) / 10 : 0;
+
+  const clusterData = detectMuleClusters(store, 2, 30);
+  let matchedCluster: StoredMuleCluster | null = null;
+  let memberRole: string | null = null;
+  for (const cl of clusterData.clusters) {
+    const m = cl.members.find((mem) => mem.account_id === accountId);
+    if (m) {
+      matchedCluster = cl;
+      memberRole = m.role;
+      break;
+    }
+  }
+
+  // Counterparties
+  const inEdges = graph.edges.filter((e) => e.to_account === accountId);
+  const outEdges = graph.edges.filter((e) => e.from_account === accountId);
+
+  const counterparties: Array<{
+    account_id: string;
+    account_number: string;
+    holder_name: string;
+    direction: 'INFLOW' | 'OUTFLOW';
+    total_amount: number;
+    tx_count: number;
+    risk_classification: string;
+  }> = [];
+
+  const inBySrc = new Map<string, typeof inEdges>();
+  for (const e of inEdges) {
+    const list = inBySrc.get(e.from_account) ?? [];
+    list.push(e);
+    inBySrc.set(e.from_account, list);
+  }
+  for (const [srcId, txs] of inBySrc.entries()) {
+    const srcNode = graph.nodes.find((n) => n.id === srcId);
+    counterparties.push({
+      account_id: srcId,
+      account_number: srcNode?.account_number ?? srcId,
+      holder_name: srcNode?.holder_name ?? 'Unknown',
+      direction: 'INFLOW',
+      total_amount: Math.round(txs.reduce((s, t) => s + t.amount, 0) * 100) / 100,
+      tx_count: txs.length,
+      risk_classification: srcNode?.suspicious_classification ?? 'LOW',
+    });
+  }
+
+  const outByTgt = new Map<string, typeof outEdges>();
+  for (const e of outEdges) {
+    const list = outByTgt.get(e.to_account) ?? [];
+    list.push(e);
+    outByTgt.set(e.to_account, list);
+  }
+  for (const [tgtId, txs] of outByTgt.entries()) {
+    const tgtNode = graph.nodes.find((n) => n.id === tgtId);
+    counterparties.push({
+      account_id: tgtId,
+      account_number: tgtNode?.account_number ?? tgtId,
+      holder_name: tgtNode?.holder_name ?? 'Unknown',
+      direction: 'OUTFLOW',
+      total_amount: Math.round(txs.reduce((s, t) => s + t.amount, 0) * 100) / 100,
+      tx_count: txs.length,
+      risk_classification: tgtNode?.suspicious_classification ?? 'LOW',
+    });
+  }
+
+  counterparties.sort((a, b) => b.total_amount - a.total_amount);
+
+  const inDeg = inEdges.length;
+  const outDeg = outEdges.length;
+  const totalDeg = inDeg + outDeg;
+
+  return {
+    account_id: accountId,
+    account_number: acc.account_number,
+    holder_name: acc.holder_name,
+    subgraph_node_count: graph.nodes.length,
+    subgraph_edge_count: graph.edges.length,
+    in_degree: inDeg,
+    out_degree: outDeg,
+    unique_senders: inBySrc.size,
+    unique_receivers: outByTgt.size,
+    pagerank: nodeStats?.pagerank ?? 0,
+    betweenness_centrality: nodeStats?.betweenness_centrality ?? 0,
+    distance_to_nearest_fraud_account: minDistance,
+    nearest_fraud_account_id: nearestFraudId,
+    propagated_risk_score: propagatedRisk,
+    is_part_of_cycle: graph.cycles.some((c) => c.includes(accountId)),
+    cycle_count: graph.cycles.filter((c) => c.includes(accountId)).length,
+    mule_cluster_id: matchedCluster?.cluster_id ?? null,
+    mule_cluster_type: matchedCluster?.cluster_type ?? null,
+    mule_cluster_role: memberRole,
+    cluster_risk_score: matchedCluster?.risk_score ?? null,
+    fan_in_ratio: totalDeg > 0 ? Math.round((inDeg / totalDeg) * 1000) / 1000 : 0,
+    fan_out_ratio: totalDeg > 0 ? Math.round((outDeg / totalDeg) * 1000) / 1000 : 0,
+    pass_through_ratio: nodeStats?.pass_through_ratio ?? null,
+    avg_forward_latency_sec: nodeStats?.avg_forward_latency_sec ?? null,
+    max_1h_velocity: nodeStats?.velocity_1h ?? 0,
+    top_counterparties: counterparties.slice(0, 10),
+  };
+}
+
+export function extractAccountSubgraph(
+  store: FinTraceStore,
+  accountId: string,
+  direction: 'forward' | 'reverse' | 'both' = 'both',
+  depth = 2,
+  complaintId?: string
+) {
+  const { graph } = traceAccountGraph(store, accountId, direction, depth, complaintId);
+  const clusterData = detectMuleClusters(store, 2, 30);
+  const nodeIds = new Set(graph.nodes.map((n) => n.id));
+
+  const intersectingClusters = clusterData.clusters.filter((cl) =>
+    cl.members.some((m) => nodeIds.has(m.account_id))
+  );
+
+  const intel = extractAccountGraphIntelligence(store, accountId);
+
+  const fraudNodes = graph.nodes.filter(
+    (n) =>
+      n.risk_classification === 'Critical' ||
+      (n.risk_score ?? 0) >= 85 ||
+      (n.mule_probability ?? 0) >= 0.8
+  );
+
+  const propagatedRisks: Array<{
+    source_account_id: string;
+    target_account_id: string;
+    hop_distance: number;
+    attenuation_factor: number;
+    base_risk: number;
+    propagated_risk: number;
+  }> = [];
+
+  for (const fn of fraudNodes) {
+    for (const node of graph.nodes) {
+      if (node.id === fn.id) continue;
+      const d = 1;
+      const factor = Math.round(Math.pow(0.65, d) * 10000) / 10000;
+      propagatedRisks.push({
+        source_account_id: fn.id,
+        target_account_id: node.id,
+        hop_distance: d,
+        attenuation_factor: factor,
+        base_risk: 95,
+        propagated_risk: Math.round(95 * factor * 10) / 10,
+      });
+    }
+  }
+
+  return {
+    ...graph,
+    root_account_id: accountId,
+    propagated_risks: propagatedRisks.slice(0, 20),
+    mule_clusters: intersectingClusters,
+    graph_intelligence: intel,
+  };
+}
+
 
 export function extractAccountFeatures(store: FinTraceStore, accountId: string, complaintId?: string | null) {
   const txns = complaintId

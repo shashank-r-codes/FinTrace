@@ -194,8 +194,8 @@ export function TransactionExplorerPage() {
 
   return (
     <CommandLayout
-      title="Transaction Explorer"
-      section="Core Operations"
+      title="Transaction explorer"
+      section="Core operations"
       actions={
         <>
           <button
@@ -206,7 +206,7 @@ export function TransactionExplorerPage() {
               setCsvFile(null);
               setCsvOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[8px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-subtle whitespace-nowrap shrink-0 cursor-pointer transition-colors duration-120"
           >
             <Upload className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
             Upload CSV
@@ -214,33 +214,33 @@ export function TransactionExplorerPage() {
           <button
             type="button"
             onClick={() => setManualOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-[8px] bg-accent-strong px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-strong-hover whitespace-nowrap shrink-0 cursor-pointer transition-colors duration-120"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            Add Transaction
+            Add transaction
           </button>
         </>
       }
     >
       {error ? <ErrorDataState message={error} onRetry={() => void fetchTransactions()} /> : null}
 
-      {/* Mint Fresh Explorer Banner */}
-      <section className="rounded-[6px] border border-border-subtle bg-grad-mint px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      {/* Neutral Operational Scope Bar */}
+      <section className="rounded-[12px] border border-border-subtle bg-card px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-[#065F46] dark:text-emerald-300">
-            Bank Ledger & Multi-Rail Ingestion Pipeline
+          <p className="text-xs font-semibold text-heading">
+            Transaction ledger
           </p>
-          <p className="text-xs text-heading">
-            Search verified IMPS, UPI, NEFT, and RTGS transfers or trace any hop directly into the Network Graph.
+          <p className="text-xs text-muted">
+            Verified bank transfers across IMPS, UPI, NEFT, and RTGS rails. Trace any hop directly into the network graph.
           </p>
         </div>
-        <span className="font-mono text-xs font-semibold text-heading tabular-nums">
-          {total} total records
+        <span className="font-mono text-xs font-medium text-muted tabular-nums">
+          {total.toLocaleString('en-IN')} total records
         </span>
       </section>
 
       {/* Filter Bar */}
-      <section className="rounded-[6px] border border-border-subtle bg-card p-3.5">
+      <section className="rounded-[12px] border border-border-subtle bg-card p-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-center">
           <div className="lg:col-span-2 relative">
             <Search
@@ -255,7 +255,7 @@ export function TransactionExplorerPage() {
                 setSearch(e.target.value);
               }}
               placeholder="Search TXN ID, account number, or holder..."
-              className="w-full rounded-[5px] border border-border-subtle bg-subtle pl-8 pr-3 py-1.5 text-xs text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none"
+              className="w-full rounded-[8px] border border-border-subtle bg-app pl-8 pr-3 py-1.5 text-xs text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none transition-colors"
             />
           </div>
 
@@ -266,9 +266,9 @@ export function TransactionExplorerPage() {
               setComplaintFilter(e.target.value);
             }}
             aria-label="Filter by complaint"
-            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+            className="rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
           >
-            <option value="">All Complaints</option>
+            <option value="">All complaints</option>
             {complaints.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.complaint_number} · {c.victim_name}
@@ -282,10 +282,10 @@ export function TransactionExplorerPage() {
               setOffset(0);
               setChannelFilter(e.target.value);
             }}
-            aria-label="Filter by channel"
-            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+            aria-label="Filter by payment rail"
+            className="rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
           >
-            <option value="">All Channels</option>
+            <option value="">All payment rails</option>
             {CHANNELS.map((ch) => (
               <option key={ch} value={ch}>
                 {ch}
@@ -301,9 +301,9 @@ export function TransactionExplorerPage() {
               setOffset(0);
               setMinAmount(e.target.value);
             }}
-            placeholder="Min INR"
+            placeholder="Min amount (INR)"
             aria-label="Minimum amount in INR"
-            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-mono text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none"
+            className="rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs font-mono text-heading placeholder:text-muted focus:border-accent-strong focus:outline-none transition-colors"
           />
 
           <label className="flex items-center gap-2 text-xs text-body cursor-pointer select-none">
@@ -314,7 +314,7 @@ export function TransactionExplorerPage() {
                 setOffset(0);
                 setFlaggedOnly(e.target.checked);
               }}
-              className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong"
+              className="h-3.5 w-3.5 rounded border-border-strong bg-app accent-accent-strong cursor-pointer"
             />
             Flagged fraud only
           </label>
@@ -322,12 +322,12 @@ export function TransactionExplorerPage() {
       </section>
 
       {/* Transactions Ledger */}
-      <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-subtle px-4 py-3">
+      <section className="rounded-[12px] border border-border-subtle bg-card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-subtle/50 px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-heading">Verified Fund-Transfer Ledger</h2>
-            <p className="text-xs text-muted">
-              Directed account-to-account edges stored in PostgreSQL
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Bank transfer ledger</h2>
+            <p className="text-[11px] text-muted">
+              Directed account-to-account edges recorded in database ledger
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -339,7 +339,7 @@ export function TransactionExplorerPage() {
                 type="button"
                 disabled={offset === 0 || loading}
                 onClick={() => setOffset(Math.max(0, offset - limit))}
-                className="rounded-[4px] border border-border-subtle bg-card px-2.5 py-1 text-xs text-heading hover:bg-highlight disabled:opacity-40 cursor-pointer"
+                className="rounded-[8px] border border-border-subtle bg-card px-2.5 py-1 text-xs font-medium text-heading hover:bg-subtle disabled:opacity-40 cursor-pointer transition-colors"
               >
                 Prev
               </button>
@@ -347,7 +347,7 @@ export function TransactionExplorerPage() {
                 type="button"
                 disabled={offset + limit >= total || loading}
                 onClick={() => setOffset(offset + limit)}
-                className="rounded-[4px] border border-border-subtle bg-card px-2.5 py-1 text-xs text-heading hover:bg-highlight disabled:opacity-40 cursor-pointer"
+                className="rounded-[8px] border border-border-subtle bg-card px-2.5 py-1 text-xs font-medium text-heading hover:bg-subtle disabled:opacity-40 cursor-pointer transition-colors"
               >
                 Next
               </button>
@@ -365,23 +365,23 @@ export function TransactionExplorerPage() {
               <button
                 type="button"
                 onClick={() => setManualOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-[8px] bg-accent-strong px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-strong-hover cursor-pointer transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                Ingest Transaction
+                Ingest transaction
               </button>
             }
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border-subtle bg-highlight text-[11px] font-semibold uppercase tracking-wider text-heading">
+              <thead className="border-b border-border-subtle bg-highlight/40 text-[11px] font-medium uppercase tracking-wider text-muted">
                 <tr>
-                  <th className="px-4 py-2.5">TXN ID & Time</th>
-                  <th className="px-4 py-2.5">Source Account</th>
-                  <th className="px-4 py-2.5">Destination Account</th>
-                  <th className="px-4 py-2.5">Rail / Hop</th>
-                  <th className="px-4 py-2.5">Complaint</th>
+                  <th className="px-4 py-2.5">TXN ID & timestamp</th>
+                  <th className="px-4 py-2.5">Source account</th>
+                  <th className="px-4 py-2.5">Destination account</th>
+                  <th className="px-4 py-2.5">Rail / hop</th>
+                  <th className="px-4 py-2.5">Linked complaint</th>
                   <th className="px-4 py-2.5 text-right">Amount</th>
                   <th className="px-4 py-2.5">Signal</th>
                   <th className="px-4 py-2.5 text-right">Graph</th>
@@ -389,21 +389,21 @@ export function TransactionExplorerPage() {
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-subtle">
+                  <tr key={tx.id} className="hover:bg-subtle/60 transition-colors duration-120">
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      <p className="font-mono font-semibold text-accent-strong">{tx.txn_id}</p>
+                      <p className="font-mono font-medium text-accent-strong">{tx.txn_id}</p>
                       <p className="font-mono text-[11px] text-muted tabular-nums">
                         {formatTimestamp(tx.timestamp)}
                       </p>
                     </td>
                     <td className="px-4 py-2.5">
-                      <p className="font-mono text-heading">{tx.from_account_number}</p>
+                      <p className="font-mono font-medium text-heading">{tx.from_account_number}</p>
                       <p className="text-[11px] text-muted">
                         {tx.from_holder} · {tx.from_city}
                       </p>
                     </td>
                     <td className="px-4 py-2.5">
-                      <p className="font-mono text-heading">{tx.to_account_number}</p>
+                      <p className="font-mono font-medium text-heading">{tx.to_account_number}</p>
                       <p className="text-[11px] text-muted">
                         {tx.to_holder} · {tx.to_city}
                       </p>
@@ -411,14 +411,14 @@ export function TransactionExplorerPage() {
                     <td className="px-4 py-2.5 whitespace-nowrap">
                       <span className="font-mono text-heading">{tx.channel}</span>
                       <span className="mx-1.5 text-muted">·</span>
-                      <span className="font-mono text-muted">
+                      <span className="font-mono text-muted tabular-nums">
                         Hop {tx.hop_depth ?? '—'}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 font-mono text-body whitespace-nowrap">
                       {tx.complaint_number ?? 'Unlinked'}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-heading tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-right font-mono font-medium text-heading tabular-nums whitespace-nowrap">
                       {formatInr(tx.amount)}
                     </td>
                     <td className="px-4 py-2.5 whitespace-nowrap">
@@ -431,7 +431,7 @@ export function TransactionExplorerPage() {
                     <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <Link
                         to={`/graph?accountId=${encodeURIComponent(tx.from_account)}`}
-                        className="inline-flex items-center gap-1 rounded-[4px] border border-border-subtle bg-subtle px-2 py-1 text-[11px] font-medium text-heading hover:bg-highlight"
+                        className="inline-flex items-center gap-1 rounded-[8px] border border-border-subtle bg-card px-2 py-1 text-[11px] font-medium text-heading hover:bg-subtle transition-colors duration-120"
                       >
                         <GitFork className="h-3 w-3 text-accent-strong" aria-hidden="true" />
                         Trace
@@ -448,14 +448,14 @@ export function TransactionExplorerPage() {
       {/* Manual Transaction Modal */}
       {manualOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
-          <div className="w-full max-w-xl rounded-[8px] border border-border-subtle bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-5 py-3.5">
-              <h2 className="text-sm font-semibold text-heading">Ingest Single Transaction</h2>
+          <div className="w-full max-w-xl rounded-[16px] border border-border-subtle bg-card shadow-lg">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-subtle/40 px-5 py-3.5">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-heading">Ingest single transaction</h2>
               <button
                 type="button"
                 onClick={() => setManualOpen(false)}
-                className="rounded p-1 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
-                aria-label="Close modal"
+                className="rounded-[6px] p-1 text-muted hover:bg-subtle hover:text-heading cursor-pointer transition-colors"
+                aria-label="Close dialog"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -475,7 +475,7 @@ export function TransactionExplorerPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-body mb-1">
-                    Source Account (Number or UUID)
+                    Source account (number or UUID)
                   </label>
                   <input
                     type="text"
@@ -484,12 +484,12 @@ export function TransactionExplorerPage() {
                     value={fromAccount}
                     onChange={(e) => setFromAccount(e.target.value)}
                     placeholder="e.g. SYNVICT00001"
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
+                    className="w-full rounded-[8px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none transition-colors"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-body mb-1">
-                    Destination Account (Number or UUID)
+                    Destination account (number or UUID)
                   </label>
                   <input
                     type="text"
@@ -498,7 +498,7 @@ export function TransactionExplorerPage() {
                     value={toAccount}
                     onChange={(e) => setToAccount(e.target.value)}
                     placeholder="e.g. SYNMULE00100"
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
+                    className="w-full rounded-[8px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -513,15 +513,15 @@ export function TransactionExplorerPage() {
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
+                    className="w-full rounded-[8px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-body mb-1">Payment Rail</label>
+                  <label className="block text-xs font-medium text-body mb-1">Payment rail</label>
                   <select
                     value={channel}
                     onChange={(e) => setChannel(e.target.value as (typeof CHANNELS)[number])}
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+                    className="w-full rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
                   >
                     {CHANNELS.map((ch) => (
                       <option key={ch} value={ch}>
@@ -531,14 +531,14 @@ export function TransactionExplorerPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-body mb-1">Hop Depth</label>
+                  <label className="block text-xs font-medium text-body mb-1">Hop depth</label>
                   <input
                     type="number"
                     min={0}
                     max={20}
                     value={hopDepth}
                     onChange={(e) => setHopDepth(e.target.value)}
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
+                    className="w-full rounded-[8px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -551,15 +551,15 @@ export function TransactionExplorerPage() {
                     required
                     value={timestamp}
                     onChange={(e) => setTimestamp(e.target.value)}
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
+                    className="w-full rounded-[8px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-body mb-1">Link Complaint</label>
+                  <label className="block text-xs font-medium text-body mb-1">Link complaint</label>
                   <select
                     value={complaintId}
                     onChange={(e) => setComplaintId(e.target.value)}
-                    className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+                    className="w-full rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
                   >
                     <option value="">Unlinked / Background</option>
                     {complaints.map((c) => (
@@ -578,7 +578,7 @@ export function TransactionExplorerPage() {
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder="Optional bank statement reference or investigator note"
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+                  className="w-full rounded-[8px] border border-border-subtle bg-app px-3 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
                 />
               </div>
 
@@ -587,7 +587,7 @@ export function TransactionExplorerPage() {
                   type="checkbox"
                   checked={isFlaggedFraud}
                   onChange={(e) => setIsFlaggedFraud(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong"
+                  className="h-3.5 w-3.5 rounded border-border-strong bg-app accent-accent-strong cursor-pointer"
                 />
                 Flag transaction as part of suspected fraud chain
               </label>
@@ -596,16 +596,16 @@ export function TransactionExplorerPage() {
                 <button
                   type="button"
                   onClick={() => setManualOpen(false)}
-                  className="rounded-[5px] border border-border-subtle bg-subtle px-3.5 py-1.5 text-xs font-medium text-body hover:bg-highlight cursor-pointer"
+                  className="rounded-[8px] border border-border-subtle bg-card px-3.5 py-1.5 text-xs font-medium text-heading hover:bg-subtle cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={manualSubmitting}
-                  className="rounded-[5px] bg-accent-strong px-4 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer"
+                  className="rounded-[8px] bg-accent-strong px-4 py-1.5 text-xs font-medium text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer transition-colors"
                 >
-                  {manualSubmitting ? 'Recording...' : 'Record Transaction'}
+                  {manualSubmitting ? 'Recording...' : 'Record transaction'}
                 </button>
               </div>
             </form>
@@ -616,17 +616,17 @@ export function TransactionExplorerPage() {
       {/* CSV Upload Modal */}
       {csvOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
-          <div className="w-full max-w-xl rounded-[8px] border border-border-subtle bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-5 py-3.5">
+          <div className="w-full max-w-xl rounded-[16px] border border-border-subtle bg-card shadow-lg">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-subtle/40 px-5 py-3.5">
               <div className="flex items-center gap-2">
                 <FileSpreadsheet className="h-4 w-4 text-accent-strong" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-heading">Bulk CSV Transaction Ingestion</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-heading">Bulk CSV transaction ingestion</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setCsvOpen(false)}
-                className="rounded p-1 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
-                aria-label="Close modal"
+                className="rounded-[6px] p-1 text-muted hover:bg-subtle hover:text-heading cursor-pointer transition-colors"
+                aria-label="Close dialog"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -635,16 +635,16 @@ export function TransactionExplorerPage() {
             <form onSubmit={handleCsvSubmit} className="p-5 space-y-4">
               {csvError ? <ErrorDataState message={csvError} /> : null}
 
-              <div className="rounded-[5px] border border-border-subtle bg-subtle p-3 space-y-2">
+              <div className="rounded-[8px] border border-border-subtle bg-subtle/50 p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-heading">Required CSV Columns</p>
+                  <p className="text-xs font-medium text-heading">Required CSV schema columns</p>
                   <button
                     type="button"
                     onClick={downloadCsvTemplate}
                     className="inline-flex items-center gap-1 text-[11px] font-medium text-accent-strong hover:underline cursor-pointer"
                   >
                     <Download className="h-3 w-3" aria-hidden="true" />
-                    Download Template
+                    Download template
                   </button>
                 </div>
                 <p className="font-mono text-[11px] text-muted break-all">
@@ -654,53 +654,53 @@ export function TransactionExplorerPage() {
 
               <div>
                 <label className="block text-xs font-medium text-body mb-1.5">
-                  Select Statement CSV (max 5,000 rows, 5 MB)
+                  Select statement CSV (max 5,000 rows, 5 MB)
                 </label>
                 <input
                   type="file"
                   accept=".csv,text/csv"
                   onChange={handleCsvFileChange}
-                  className="block w-full text-xs text-body file:mr-3 file:rounded-[4px] file:border file:border-border-subtle file:bg-subtle file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-heading hover:file:bg-highlight"
+                  className="block w-full text-xs text-body file:mr-3 file:rounded-[6px] file:border file:border-border-subtle file:bg-card file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-heading hover:file:bg-subtle cursor-pointer"
                 />
               </div>
 
               {csvReport ? (
-                <div className="rounded-[6px] border border-border-subtle bg-subtle p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#065F46] dark:text-emerald-400">
-                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    Validation & Ingestion Summary
+                <div className="rounded-[12px] border border-border-subtle bg-subtle/40 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-heading">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                    Validation and ingestion summary
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs tabular-nums">
-                    <div className="rounded bg-card border border-border-subtle p-2">
+                    <div className="rounded-[8px] bg-card border border-border-subtle p-2">
                       <p className="text-[10px] text-muted">Total</p>
-                      <p className="font-bold text-heading">{csvReport.totalRows}</p>
+                      <p className="font-semibold text-heading">{csvReport.totalRows}</p>
                     </div>
-                    <div className="rounded bg-card border border-border-subtle p-2">
+                    <div className="rounded-[8px] bg-card border border-border-subtle p-2">
                       <p className="text-[10px] text-muted">Inserted</p>
-                      <p className="font-bold text-[#065F46] dark:text-emerald-400">
+                      <p className="font-semibold text-emerald-700 dark:text-emerald-400">
                         {csvReport.inserted}
                       </p>
                     </div>
-                    <div className="rounded bg-card border border-border-subtle p-2">
+                    <div className="rounded-[8px] bg-card border border-border-subtle p-2">
                       <p className="text-[10px] text-muted">Duplicates</p>
-                      <p className="font-bold text-[#92400E] dark:text-amber-300">
+                      <p className="font-semibold text-amber-700 dark:text-amber-300">
                         {csvReport.skippedDuplicates}
                       </p>
                     </div>
-                    <div className="rounded bg-card border border-border-subtle p-2">
+                    <div className="rounded-[8px] bg-card border border-border-subtle p-2">
                       <p className="text-[10px] text-muted">Errors</p>
-                      <p className="font-bold text-[#991B1B] dark:text-red-400">
+                      <p className="font-semibold text-red-700 dark:text-red-400">
                         {csvReport.errors.length}
                       </p>
                     </div>
                   </div>
 
                   {csvReport.errors.length > 0 ? (
-                    <div className="max-h-36 overflow-y-auto divide-y divide-border-subtle border border-border-subtle rounded bg-card">
+                    <div className="max-h-36 overflow-y-auto divide-y divide-border-subtle border border-border-subtle rounded-[8px] bg-card">
                       {csvReport.errors.map((errItem, idx) => (
                         <div
                           key={idx}
-                          className="px-3 py-1.5 text-[11px] text-[#991B1B] dark:text-red-300 font-mono"
+                          className="px-3 py-1.5 text-[11px] text-red-700 dark:text-red-300 font-mono"
                         >
                           Row {errItem.row}: {errItem.error}
                         </div>
@@ -714,16 +714,16 @@ export function TransactionExplorerPage() {
                 <button
                   type="button"
                   onClick={() => setCsvOpen(false)}
-                  className="rounded-[5px] border border-border-subtle bg-subtle px-3.5 py-1.5 text-xs font-medium text-body hover:bg-highlight cursor-pointer"
+                  className="rounded-[8px] border border-border-subtle bg-card px-3.5 py-1.5 text-xs font-medium text-heading hover:bg-subtle cursor-pointer transition-colors"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
                   disabled={!csvFile || csvSubmitting}
-                  className="rounded-[5px] bg-accent-strong px-4 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer"
+                  className="rounded-[8px] bg-accent-strong px-4 py-1.5 text-xs font-medium text-white hover:bg-accent-strong-hover disabled:opacity-50 cursor-pointer transition-colors"
                 >
-                  {csvSubmitting ? 'Validating & Importing...' : 'Upload & Validate CSV'}
+                  {csvSubmitting ? 'Validating & importing...' : 'Upload & validate CSV'}
                 </button>
               </div>
             </form>

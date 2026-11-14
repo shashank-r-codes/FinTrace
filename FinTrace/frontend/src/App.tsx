@@ -1,7 +1,9 @@
 import { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AccountIntelligencePage } from './pages/AccountIntelligencePage';
 import { AiAssistantPage } from './pages/AiAssistantPage';
 import { AlertsCentrePage } from './pages/AlertsCentrePage';
 import { AtmPredictionPage } from './pages/AtmPredictionPage';
@@ -15,9 +17,13 @@ import { DashboardPage } from './pages/DashboardPage';
 import { EvidencePage } from './pages/EvidencePage';
 import { FraudDetectionPage } from './pages/FraudDetectionPage';
 import { GeospatialMapPage } from './pages/GeospatialMapPage';
+import { InterventionCentrePage } from './pages/InterventionCentrePage';
 import { InvestigationsPage } from './pages/InvestigationsPage';
 import { LoginPage } from './pages/LoginPage';
+import { MuleSyndicatesPage } from './pages/MuleSyndicatesPage';
 import { NetworkGraphPage } from './pages/NetworkGraphPage';
+import { PreventionSimulatorPage } from './pages/PreventionSimulatorPage';
+import { RealTimeScreeningPage } from './pages/RealTimeScreeningPage';
 import { ReportsAnalyticsPage } from './pages/ReportsAnalyticsPage';
 import { SettingsUsersPage } from './pages/SettingsUsersPage';
 import { TransactionExplorerPage } from './pages/TransactionExplorerPage';
@@ -85,10 +91,11 @@ function CatchAllRedirect() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
             <Route path="/login" element={<LoginPage />} />
 
             {/* Citizen Portal Routes (Strictly isolated) */}
@@ -155,6 +162,48 @@ export default function App() {
               element={
                 <OfficerRoute>
                   <TransactionExplorerPage />
+                </OfficerRoute>
+              }
+            />
+
+            {/* Fraud Prevention Layer */}
+            <Route
+              path="/accounts/intelligence"
+              element={
+                <OfficerRoute>
+                  <AccountIntelligencePage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/screening"
+              element={
+                <OfficerRoute>
+                  <RealTimeScreeningPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/interventions"
+              element={
+                <OfficerRoute>
+                  <InterventionCentrePage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/mule-clusters"
+              element={
+                <OfficerRoute>
+                  <MuleSyndicatesPage />
+                </OfficerRoute>
+              }
+            />
+            <Route
+              path="/prevention-simulator"
+              element={
+                <OfficerRoute>
+                  <PreventionSimulatorPage />
                 </OfficerRoute>
               }
             />
@@ -244,5 +293,6 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+  </ErrorBoundary>
   );
 }

@@ -23,23 +23,25 @@ import {
 } from '../types';
 import { formatInr, formatShortTime } from '../utils/formatters';
 
+// Fix Leaflet's default icon paths in bundled environments
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
 
-const DEFAULT_LIGHT_TILES =
-  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-const DEFAULT_DARK_TILES =
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const FALLBACK_ESRI_TILES =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+const OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
 
 function riskColorHex(level: string, theme: 'light' | 'dark'): string {
-  if (level === 'Critical') return theme === 'light' ? '#DC2626' : '#EF4444';
-  if (level === 'High') return theme === 'light' ? '#D97706' : '#F59E0B';
-  if (level === 'Medium') return theme === 'light' ? '#3489E8' : '#38BDF8';
+  if (level === 'Critical' || level === 'High') {
+    return theme === 'light' ? '#DC2626' : '#EF4444';
+  }
+  if (level === 'Medium') {
+    return theme === 'light' ? '#D97706' : '#F59E0B';
+  }
   return '#10B981';
 }
 
@@ -98,7 +100,7 @@ export function GeospatialMapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tileNotice, setTileNotice] = useState<string | null>(null);
-  const [tileProviderLabel, setTileProviderLabel] = useState<string>('CARTO Basemap');
+  const [tileProviderLabel, setTileProviderLabel] = useState<string>('OpenStreetMap');
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -238,7 +240,7 @@ export function GeospatialMapPage() {
     };
   }, []);
 
-  // Swap theme-aware basemap TileLayer cleanly + handle tileerror fallback
+  // Mount OpenStreetMap standard TileLayer
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -249,63 +251,24 @@ export function GeospatialMapPage() {
     }
 
     setTileNotice(null);
-    const configuredLightUrl =
-      (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim() || DEFAULT_LIGHT_TILES;
+    setTileProviderLabel('OpenStreetMap');
+
+    const configuredUrl =
+      (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim();
     const primaryUrl =
-      theme === 'dark'
-        ? configuredLightUrl !== DEFAULT_LIGHT_TILES && configuredLightUrl.includes('voyager')
-          ? configuredLightUrl.replace('voyager', 'dark_all')
-          : DEFAULT_DARK_TILES
-        : configuredLightUrl;
+      configuredUrl && !configuredUrl.includes('cartocdn') && !configuredUrl.includes('carto')
+        ? configuredUrl
+        : OSM_TILE_URL;
 
-    setTileProviderLabel(theme === 'dark' ? 'CARTO Dark Matter' : 'CARTO Voyager');
-
-    let usingFallback = false;
-    let primaryErrorCount = 0;
-    let fallbackErrorCount = 0;
-
-    const attachFallbackLayer = () => {
-      if (usingFallback || !mapRef.current) return;
-      usingFallback = true;
-      if (tileLayerRef.current) {
-        mapRef.current.removeLayer(tileLayerRef.current);
-      }
-      setTileProviderLabel('Esri World Street Map (Fallback)');
-      const fallbackLayer = L.tileLayer(FALLBACK_ESRI_TILES, {
-        attribution: 'Tiles © Esri — Source: Esri, HERE, Garmin, OpenStreetMap',
-        maxZoom: 19,
-        referrerPolicy: 'origin',
-      } as L.TileLayerOptions);
-
-      fallbackLayer.on('tileerror', () => {
-        fallbackErrorCount += 1;
-        if (fallbackErrorCount >= 3) {
-          setTileNotice(
-            'Basemap tiles could not be loaded in this environment. Plotted ATM markers, coordinates, and DBSCAN clusters remain interactive below.'
-          );
-        }
-      });
-
-      fallbackLayer.addTo(mapRef.current);
-      tileLayerRef.current = fallbackLayer;
-    };
-
-    const primaryLayer = L.tileLayer(primaryUrl, {
-      attribution: '© OpenStreetMap contributors © CARTO',
-      subdomains: 'abcd',
+    const osmLayer = L.tileLayer(primaryUrl, {
+      attribution: OSM_ATTRIBUTION,
+      subdomains: 'abc',
       maxZoom: 19,
       referrerPolicy: 'origin',
-    } as L.TileLayerOptions);
-
-    primaryLayer.on('tileerror', () => {
-      primaryErrorCount += 1;
-      if (!usingFallback && primaryErrorCount >= 3) {
-        attachFallbackLayer();
-      }
     });
 
-    primaryLayer.addTo(map);
-    tileLayerRef.current = primaryLayer;
+    osmLayer.addTo(map);
+    tileLayerRef.current = osmLayer;
 
     const timer = setTimeout(() => {
       map.invalidateSize();
@@ -337,10 +300,10 @@ export function GeospatialMapPage() {
           fillOpacity: theme === 'light' ? 0.14 : 0.12,
         })
           .bindPopup(
-            `<div style="font-family:sans-serif;font-size:12px;">
-              <strong>DBSCAN Cluster #${cl.cluster_id}</strong><br/>
-              ATMs: ${cl.atm_count} (${escapeHtml(cl.localities.join(', '))})<br/>
-              Flagged Cash-Outs: ${cl.flagged_cashouts} / ${cl.total_withdrawals}
+            `<div style="font-family:sans-serif;font-size:12px;color:${theme === 'light' ? '#172B4D' : '#F1F5F9'};">
+              <strong style="font-size:13px;">DBSCAN Cluster #${cl.cluster_id}</strong><br/>
+              <span style="opacity:0.8;">ATMs:</span> ${cl.atm_count} (${escapeHtml(cl.localities.join(', '))})<br/>
+              <span style="opacity:0.8;">Flagged Cash-Outs:</span> ${cl.flagged_cashouts} / ${cl.total_withdrawals}
             </div>`
           )
           .addTo(group);
@@ -357,10 +320,10 @@ export function GeospatialMapPage() {
           fillOpacity: 0.75,
         })
           .bindPopup(
-            `<div style="font-family:sans-serif;font-size:12px;">
-              <strong>Historical Withdrawal (${escapeHtml(wd.atm_id)})</strong><br/>
-              ${escapeHtml(wd.account_number)} · ${escapeHtml(formatInr(wd.amount))}<br/>
-              ${escapeHtml(formatShortTime(wd.withdrawn_at))}
+            `<div style="font-family:sans-serif;font-size:12px;color:${theme === 'light' ? '#172B4D' : '#F1F5F9'};">
+              <strong style="font-size:13px;">Historical Withdrawal (${escapeHtml(wd.atm_id)})</strong><br/>
+              <span style="font-family:monospace;">${escapeHtml(wd.account_number)}</span> · ${escapeHtml(formatInr(wd.amount))}<br/>
+              <span style="opacity:0.8;">Time:</span> ${escapeHtml(formatShortTime(wd.withdrawn_at))}
             </div>`
           )
           .addTo(group);
@@ -392,8 +355,8 @@ export function GeospatialMapPage() {
 
       const accountsHtml =
         atm.linked_accounts.length > 0
-          ? `<div style="margin-top:6px;">
-              <strong>Linked Accounts:</strong><br/>
+          ? `<div style="margin-top:6px;border-top:1px solid rgba(148,163,184,0.25);padding-top:4px;">
+              <span style="font-size:10px;text-transform:uppercase;opacity:0.75;font-weight:600;">Linked Accounts:</span><br/>
               ${atm.linked_accounts
                 .slice(0, 3)
                 .map(
@@ -408,8 +371,8 @@ export function GeospatialMapPage() {
 
       const pathsHtml =
         atm.relevant_paths.length > 0
-          ? `<div style="margin-top:6px;">
-              <strong>Linked Transactions / Flow:</strong><br/>
+          ? `<div style="margin-top:6px;border-top:1px solid rgba(148,163,184,0.25);padding-top:4px;">
+              <span style="font-size:10px;text-transform:uppercase;opacity:0.75;font-weight:600;">Linked Flow:</span><br/>
               ${atm.relevant_paths
                 .slice(0, 2)
                 .map(
@@ -422,14 +385,48 @@ export function GeospatialMapPage() {
             </div>`
           : '';
 
+      const isDark = theme === 'dark';
+      const riskBadgeBg =
+        atm.risk_level === 'Critical' || atm.risk_level === 'High'
+          ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2')
+          : atm.risk_level === 'Medium'
+          ? (isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7')
+          : (isDark ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5');
+      const riskBadgeColor =
+        atm.risk_level === 'Critical' || atm.risk_level === 'High'
+          ? (isDark ? '#f87171' : '#b91c1c')
+          : atm.risk_level === 'Medium'
+          ? (isDark ? '#fbbf24' : '#b45309')
+          : (isDark ? '#34d399' : '#047857');
+
       marker.bindPopup(
-        `<div style="font-family:sans-serif;font-size:12px;min-width:220px;max-width:290px;">
-          <strong>${escapeHtml(atm.atm_id)} · ${escapeHtml(atm.bank)}</strong><br/>
-          <span>${escapeHtml(atm.locality)} — ${escapeHtml(atm.address)}</span><br/>
-          <hr style="margin:6px 0;border-color:#94a3b8;opacity:0.35;"/>
-          <span>Risk Score: ${scoreText}</span><br/>
-          <span>Window: <strong>${escapeHtml(atm.window)}</strong></span><br/>
-          <span style="opacity:0.8;">${escapeHtml(atm.subtitle)}</span>
+        `<div class="fintrace-atm-popup" style="font-family:sans-serif;font-size:12px;min-width:240px;max-width:310px;line-height:1.45;color:${isDark ? '#F1F5F9' : '#172B4D'};">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,0.3);">
+            <div>
+              <strong style="font-size:13px;font-weight:700;">${escapeHtml(atm.atm_id)}</strong>
+              <div style="font-size:11px;opacity:0.8;">${escapeHtml(atm.bank)}</div>
+            </div>
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:2px 7px;border-radius:4px;background:${riskBadgeBg};color:${riskBadgeColor};">
+              ${escapeHtml(atm.risk_level)}
+            </span>
+          </div>
+          <div style="margin-bottom:5px;">
+            <span style="opacity:0.75;font-size:10px;font-weight:600;text-transform:uppercase;">Location:</span><br/>
+            <strong>${escapeHtml(atm.locality)}</strong> — <span>${escapeHtml(atm.address)}, ${escapeHtml(atm.city)}</span>
+          </div>
+          <div style="margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="opacity:0.75;font-size:10px;font-weight:600;text-transform:uppercase;">Risk Score:</span>
+            <span style="font-weight:700;font-family:monospace;font-size:12px;color:${riskBadgeColor};">${scoreText}</span>
+          </div>
+          <div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="opacity:0.75;font-size:10px;font-weight:600;text-transform:uppercase;">Cash-Out Window:</span>
+            <span style="font-family:monospace;font-weight:700;font-size:11px;padding:1px 6px;border-radius:3px;background:${riskBadgeBg};color:${riskBadgeColor};">
+              ${escapeHtml(atm.window)}
+            </span>
+          </div>
+          <div style="font-size:11px;opacity:0.8;margin-bottom:4px;">
+            ${escapeHtml(atm.subtitle)}
+          </div>
           ${accountsHtml}
           ${pathsHtml}
         </div>`
@@ -464,229 +461,221 @@ export function GeospatialMapPage() {
 
   return (
     <CommandLayout
-      title="GIS ATM Hotspot & Cash-Out Map"
-      section="Intelligence Engines"
+      title="Geospatial cash-out intelligence map"
+      section="Casework and intelligence"
       actions={
         <button
           type="button"
           onClick={() => void loadGeoData()}
-          className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-[8px] border border-border-subtle bg-card px-3 py-1.5 text-xs font-medium text-heading hover:bg-highlight whitespace-nowrap shrink-0 cursor-pointer transition-colors duration-120"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-          Refresh Map
+          <span>Refresh map data</span>
         </button>
       }
     >
-      {error ? <ErrorDataState message={error} onRetry={() => void loadGeoData()} /> : null}
+      <div className="space-y-6">
+        {error ? <ErrorDataState message={error} onRetry={() => void loadGeoData()} /> : null}
 
-      {tileNotice ? (
-        <div
-          role="status"
-          className="flex items-center gap-2 rounded-[6px] border border-amber-400/50 bg-[#FEF3C7] px-4 py-2.5 text-xs text-[#92400E] dark:border-amber-500/40 dark:bg-amber-950/35 dark:text-amber-200"
-        >
-          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{tileNotice}</span>
-        </div>
-      ) : null}
+        {tileNotice ? (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-[8px] border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200"
+          >
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
+            <span>{tileNotice}</span>
+          </div>
+        ) : null}
 
-      {/* Map Filters */}
-      <section className="rounded-[6px] border border-border-subtle bg-card p-3.5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
-          <div className="lg:col-span-2">
+        {/* Map Filters */}
+        <section className="rounded-[12px] border border-border-subtle bg-card p-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
+            <div className="lg:col-span-2">
+              <select
+                value={selectedComplaintId}
+                onChange={(e) => {
+                  setSelectedAtmId(null);
+                  setSelectedComplaintId(e.target.value);
+                }}
+                aria-label="Filter map by complaint"
+                className="w-full rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs text-heading focus:outline-none"
+              >
+                <option value="">Global ATM risk heatmap (All cases)</option>
+                {complaints.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.complaint_number} · {c.victim_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <select
-              value={selectedComplaintId}
+              value={riskFilter}
               onChange={(e) => {
                 setSelectedAtmId(null);
-                setSelectedComplaintId(e.target.value);
+                setRiskFilter(e.target.value as RiskLevel | '');
               }}
-              aria-label="Filter map by complaint"
-              className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+              aria-label="Filter by risk level"
+              className="rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs text-heading focus:outline-none"
             >
-              <option value="">Global ATM Risk Heatmap (All Cases)</option>
-              {complaints.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.complaint_number} · {c.victim_name}
-                </option>
-              ))}
+              <option value="">All risk levels</option>
+              <option value="Critical">Critical (80–100)</option>
+              <option value="High">High (65–79)</option>
+              <option value="Medium">Medium (45–64)</option>
+              <option value="Low">Low (&lt;45)</option>
             </select>
+
+            <select
+              value={windowFilter}
+              onChange={(e) => {
+                setSelectedAtmId(null);
+                setWindowFilter(e.target.value as PredictionWindow | '');
+              }}
+              aria-label="Filter by window"
+              className="rounded-[8px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs text-heading focus:outline-none"
+            >
+              <option value="">All time windows</option>
+              <option value="0-6h">0-6h</option>
+              <option value="6-12h">6-12h</option>
+              <option value="12-24h">12-24h</option>
+              <option value=">24h">&gt;24h</option>
+            </select>
+
+            <div className="flex items-center gap-4 text-xs text-body">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showClusters}
+                  onChange={(e) => setShowClusters(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong cursor-pointer"
+                />
+                <span>DBSCAN clusters</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showWithdrawals}
+                  onChange={(e) => setShowWithdrawals(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong cursor-pointer"
+                />
+                <span>Past cash-outs</span>
+              </label>
+            </div>
           </div>
+        </section>
 
-          <select
-            value={riskFilter}
-            onChange={(e) => {
-              setSelectedAtmId(null);
-              setRiskFilter(e.target.value as RiskLevel | '');
-            }}
-            aria-label="Filter by risk level"
-            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
-          >
-            <option value="">All Risk Levels</option>
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-
-          <select
-            value={windowFilter}
-            onChange={(e) => {
-              setSelectedAtmId(null);
-              setWindowFilter(e.target.value as PredictionWindow | '');
-            }}
-            aria-label="Filter by window"
-            className="rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
-          >
-            <option value="">All Windows</option>
-            <option value="0-6h">0-6h</option>
-            <option value="6-12h">6-12h</option>
-            <option value="12-24h">12-24h</option>
-            <option value=">24h">&gt;24h</option>
-          </select>
-
-          <div className="flex items-center gap-4 text-xs text-body">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showClusters}
-                onChange={(e) => setShowClusters(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong"
-              />
-              DBSCAN Clusters
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showWithdrawals}
-                onChange={(e) => setShowWithdrawals(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-border-strong bg-subtle accent-accent-strong"
-              />
-              Past Cash-Outs
-            </label>
-          </div>
-        </div>
-      </section>
-
-      {/* Map + Terminal Sidebar */}
-      <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-8 rounded-[6px] border border-border-subtle bg-card overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-2.5 text-xs">
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-accent-strong" aria-hidden="true" />
-              <span className="font-semibold text-heading">
-                Spatial Intelligence Map · {tileProviderLabel}
+        {/* Map + Terminal Sidebar */}
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+          <div className="xl:col-span-8 rounded-[12px] border border-border-subtle bg-card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-subtle px-4 py-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+                <span className="font-semibold text-heading">
+                  Spatial intelligence map · {tileProviderLabel}
+                </span>
+              </div>
+              <span className="font-mono text-[11px] text-muted tabular-nums">
+                {displayedAtms.length} ATMs · {clusters.length} DBSCAN clusters
               </span>
             </div>
-            <span className="font-mono text-[11px] text-muted tabular-nums">
-              {displayedAtms.length} ATMs · {clusters.length} DBSCAN clusters
-            </span>
-          </div>
 
-          <div ref={mapContainerRef} className="h-[calc(100vh-280px)] min-h-[480px] w-full z-10" />
+            <div ref={mapContainerRef} className="h-[calc(100vh-280px)] min-h-[480px] w-full z-10" />
 
-          <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle bg-subtle px-4 py-2 text-[11px] text-body">
-            <span className="flex items-center gap-1.5">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: 'var(--risk-critical-marker)' }}
-              />
-              Critical (80–100)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: 'var(--risk-high-marker)' }}
-              />
-              High (65–79)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: 'var(--risk-medium-marker)' }}
-              />
-              Medium (45–64)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: 'var(--risk-low-marker)' }}
-              />
-              Low / Baseline
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full border border-amber-500 bg-amber-400/30" />
-              DBSCAN Hotspot Zone (1.8 km)
-            </span>
-          </div>
-        </div>
-
-        <div className="xl:col-span-4 rounded-[6px] border border-border-subtle bg-card flex flex-col overflow-hidden">
-          <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-heading">Plotted ATM Terminals</h2>
+            <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle bg-subtle px-4 py-2 text-[11px] text-body">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-600 shrink-0" />
+                <span>Critical (80–100)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" />
+                <span>High (65–79)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
+                <span>Medium (45–64)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+                <span>Low / Baseline</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full border border-amber-500 bg-amber-400/30 shrink-0" />
+                <span>DBSCAN hotspot zone (1.8 km)</span>
+              </span>
             </div>
-            <span className="font-mono text-xs text-muted tabular-nums">
-              {displayedAtms.length}
-            </span>
           </div>
 
-          <div className="divide-y divide-border-subtle overflow-y-auto max-h-[calc(100vh-270px)] min-h-[480px]">
-            {displayedAtms.length === 0 ? (
-              <EmptyDataState
-                title="No ATM markers match filters"
-                description="Clear risk or window filters to display all Bengaluru ATM terminals."
-              />
-            ) : (
-              displayedAtms.map((atm) => {
-                const isSelected = selectedAtmId === atm.atm_id;
-                const hasPrediction = !(atm.risk_score === 0 && atm.prediction_count === 0);
-                return (
-                  <button
-                    key={atm.atm_id}
-                    type="button"
-                    onClick={() => focusAtmOnMap(atm)}
-                    className={`w-full px-4 py-3 text-left space-y-1.5 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-highlight' : 'hover:bg-subtle'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-heading truncate">
-                          {atm.atm_id} · {atm.bank} ({atm.locality})
-                        </p>
-                        <p className="text-[11px] text-muted truncate">{atm.address}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {hasPrediction ? (
-                          <p className="font-mono text-sm font-bold text-heading tabular-nums">
-                            {atm.risk_score.toFixed(1)}/100
+          <div className="xl:col-span-4 rounded-[12px] border border-border-subtle bg-card flex flex-col overflow-hidden">
+            <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+                <h2 className="text-xs font-semibold text-heading">Plotted ATM terminals</h2>
+              </div>
+              <span className="font-mono text-xs text-muted tabular-nums">
+                {displayedAtms.length}
+              </span>
+            </div>
+
+            <div className="divide-y divide-border-subtle overflow-y-auto max-h-[calc(100vh-270px)] min-h-[480px]">
+              {displayedAtms.length === 0 ? (
+                <EmptyDataState
+                  title="No ATM markers match filters"
+                  description="Clear risk or window filters to display all Bengaluru ATM terminals."
+                />
+              ) : (
+                displayedAtms.map((atm) => {
+                  const isSelected = selectedAtmId === atm.atm_id;
+                  const hasPrediction = !(atm.risk_score === 0 && atm.prediction_count === 0);
+                  return (
+                    <button
+                      key={atm.atm_id}
+                      type="button"
+                      onClick={() => focusAtmOnMap(atm)}
+                      className={`w-full px-4 py-3 text-left space-y-1.5 cursor-pointer transition-colors duration-120 ${
+                        isSelected ? 'bg-highlight' : 'hover:bg-subtle'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-heading truncate">
+                            {atm.atm_id} · {atm.bank} ({atm.locality})
                           </p>
+                          <p className="text-[11px] text-muted truncate">{atm.address}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          {hasPrediction ? (
+                            <p className="font-mono text-sm font-bold text-heading tabular-nums">
+                              {atm.risk_score.toFixed(1)}/100
+                            </p>
+                          ) : (
+                            <p className="text-[11px] font-medium text-muted">
+                              No active prediction
+                            </p>
+                          )}
+                          <div className="mt-0.5 flex justify-end">
+                            <StatusSignal level={atm.risk_level} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="font-mono text-amber-800 dark:text-amber-300 tabular-nums">
+                          Window: {atm.window}
+                        </span>
+                        {atm.score_source ? (
+                          <ScoreSourceBadge source={atm.score_source} />
                         ) : (
-                          <p className="text-[11px] font-semibold text-muted">
-                            No active prediction
-                          </p>
+                          <span className="text-muted truncate text-[11px]">{atm.subtitle}</span>
                         )}
-                        <StatusSignal level={atm.risk_level} />
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 text-[11px]">
-                      <span className="font-mono text-amber-700 dark:text-amber-300">
-                        Window: {atm.window}
-                      </span>
-                      {atm.score_source ? (
-                        <ScoreSourceBadge source={atm.score_source} />
-                      ) : (
-                        <span className="text-muted truncate">{atm.subtitle}</span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </CommandLayout>
   );
 }

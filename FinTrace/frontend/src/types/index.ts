@@ -296,6 +296,11 @@ export interface GraphNode {
   velocity_1h: number;
   pagerank: number;
   betweenness_centrality: number;
+  risk_score?: number;
+  risk_classification?: string;
+  propagated_risk?: number;
+  mule_cluster_id?: string | null;
+  mule_cluster_role?: string | null;
 }
 
 export interface GraphEdge {
@@ -697,4 +702,464 @@ export interface CitizenNotificationItem {
   is_read: boolean;
   created_at: string;
 }
+
+// =============================================================================
+// PREVENTION LAYER: ACCOUNT INTELLIGENCE & RISK REGISTRY (Phase 2)
+// =============================================================================
+
+export type RiskClassification =
+  | 'Low'
+  | 'Medium'
+  | 'High'
+  | 'Critical'
+  | 'Under Investigation';
+
+export type AccountStatusClassification =
+  | 'NORMAL'
+  | 'SUSPICIOUS_ACCOUNT'
+  | 'SUSPECTED_MULE_ACCOUNT'
+  | 'CONFIRMED_FRAUD_LINKED';
+
+export interface AccountIntelligenceProfile {
+  account_id: string;
+  account_number: string;
+  holder_name: string;
+  branch_city: string;
+  ifsc_code: string;
+  account_type: string;
+  is_frozen: boolean;
+  bank_name: string;
+  bank_code: string;
+  risk_score: number;
+  risk_classification: RiskClassification;
+  account_status: AccountStatusClassification;
+  incoming_frequency_24h: number;
+  outgoing_frequency_24h: number;
+  incoming_volume_24h: number;
+  outgoing_volume_24h: number;
+  avg_incoming_amount: number;
+  avg_outgoing_amount: number;
+  velocity_score: number;
+  pass_through_ratio: number;
+  rapid_forward_count_24h: number;
+  connected_accounts_count: number;
+  suspicious_counterparties_count: number;
+  prior_complaints_count: number;
+  mule_indicators: string[];
+  risk_reasons: string[];
+  score_source: ScoreSource;
+  last_assessed_at: string;
+  is_synthetic: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountRiskHistoryEntry {
+  id: string;
+  account_id: string;
+  previous_score: number | null;
+  new_score: number;
+  previous_classification: RiskClassification | string | null;
+  new_classification: RiskClassification | string;
+  trigger_event: string;
+  trigger_reference_id?: string | null;
+  reasons_json: string[];
+  assessed_by: string;
+  recorded_at: string;
+}
+
+export interface SuspiciousRelationship {
+  id: string;
+  source_account_id: string;
+  target_account_id: string;
+  target_account_number?: string;
+  target_holder_name?: string;
+  target_bank?: string;
+  relationship_type:
+    | 'BENEFICIARY'
+    | 'SHARED_DEVICE'
+    | 'COMMON_IDENTIFIER'
+    | 'REPEATED_BURST'
+    | 'SUSPECTED_SYNDICATE';
+  hops_to_confirmed_fraud: number;
+  risk_weight: number;
+  first_observed_at: string;
+  last_observed_at: string;
+}
+
+export interface AccountIntelligenceDetail {
+  account: {
+    id: string;
+    account_number: string;
+    holder_name: string;
+    branch_city: string;
+    ifsc_code: string;
+    account_type: string;
+    is_frozen: boolean;
+    bank_name: string;
+    bank_code: string;
+  };
+  profile: AccountIntelligenceProfile;
+  relationships: SuspiciousRelationship[];
+  riskHistory: AccountRiskHistoryEntry[];
+  recentPatterns: {
+    fanInCount: number;
+    passThroughRatio: number;
+    rapidForwardBursts: number;
+    largeReceiptsCount: number;
+    flaggedCounterparties: number;
+    hourlyVelocityMax: number;
+  };
+  linkedComplaints: Array<{
+    id: string;
+    complaint_number: string;
+    status: string;
+    fraud_type: string;
+    reported_amount: number;
+  }>;
+}
+
+export interface AccountIntelligenceRegistryResponse {
+  accounts: AccountIntelligenceProfile[];
+  summary: {
+    totalAccounts: number;
+    criticalCount: number;
+    highCount: number;
+    mediumCount: number;
+    lowCount: number;
+    underInvestigationCount: number;
+    confirmedFraudLinkedCount: number;
+    suspectedMuleCount: number;
+    suspiciousAccountCount: number;
+    normalCount: number;
+  };
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
+// =============================================================================
+// PREVENTION LAYER: REAL-TIME TRANSACTION SCREENING (Phase 3)
+// =============================================================================
+
+export type ScreeningDecision = 'ALLOW' | 'VERIFY' | 'HOLD' | 'BLOCK';
+export type RecommendedAction =
+  | 'ALLOW'
+  | 'ADDITIONAL_VERIFICATION'
+  | 'HOLD_FOR_REVIEW'
+  | 'REJECT_BLOCK';
+export type ScreeningFailMode = 'NONE' | 'FAIL_OPEN' | 'FAIL_CLOSED';
+
+export interface ScreeningRequestPayload {
+  senderAccountId: string;
+  receiverAccountId: string;
+  amount: number;
+  currency?: string;
+  channel: 'UPI' | 'IMPS' | 'NEFT' | 'RTGS' | 'CARD' | 'WALLET';
+  timestamp?: string;
+  clientId?: string;
+  idempotencyKey?: string;
+  deviceFingerprint?: string;
+  ipAddress?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface RuleTriggeredDetail {
+  rule_id: string;
+  name: string;
+  weight: number;
+  contribution: number;
+  category: 'SENDER' | 'RECEIVER' | 'TRANSACTION' | 'NETWORK';
+}
+
+export interface ScreeningResult {
+  screeningId: string;
+  idempotencyKey: string;
+  decision: ScreeningDecision;
+  recommendedAction: RecommendedAction;
+  riskScore: number;
+  riskClassification: RiskClassification;
+  accountRiskScore: number;
+  transactionRiskScore: number;
+  networkRiskScore: number;
+  compositeScore: number;
+  senderRiskScore: number;
+  receiverRiskScore: number;
+  latencyMs: number;
+  appliedFailMode: ScreeningFailMode;
+  scoreSource: ScoreSource;
+  thresholdsVersion: number;
+  rulesTriggered: RuleTriggeredDetail[];
+  plainLanguageExplanation: string;
+  limitationsDisclaimer: string;
+  senderAccount: {
+    id: string;
+    accountNumber: string;
+    holderName: string;
+    bankName: string;
+    accountStatus: AccountStatusClassification;
+  };
+  receiverAccount: {
+    id: string;
+    accountNumber: string;
+    holderName: string;
+    bankName: string;
+    accountStatus: AccountStatusClassification;
+  };
+  idempotentReplay?: boolean;
+  screenedAt: string;
+}
+
+export interface ScreeningThresholds {
+  id: string;
+  version: number;
+  low_max: number;
+  medium_max: number;
+  high_max: number;
+  is_active: boolean;
+  modified_by?: string | null;
+  reason_for_change: string;
+  created_at: string;
+}
+
+export interface SystemSettingItem {
+  id: string;
+  key: string;
+  value: string;
+  description: string;
+  updated_at: string;
+}
+
+// ---------------- PHASE 5: GRAPH ACCOUNT INTELLIGENCE & MULE SYNDICATE TYPES ----------------
+
+export type MuleClusterType =
+  | 'MULE_RING_CYCLE'
+  | 'FAN_OUT_DISPERSAL'
+  | 'RAPID_PASS_THROUGH_CHAIN'
+  | 'FUNNEL_COLLECTION'
+  | 'SUSPICIOUS_COMMUNITY';
+
+export interface MuleClusterMember {
+  account_id: string;
+  account_number: string;
+  holder_name: string;
+  bank_name?: string;
+  role: 'SOURCE' | 'INTERMEDIARY_MULE' | 'CASH_OUT_SINK' | 'COORDINATOR' | 'MEMBER';
+  risk_score: number;
+  risk_classification: string;
+  mule_probability: number;
+  in_degree: number;
+  out_degree: number;
+  total_inflow: number;
+  total_outflow: number;
+  is_frozen: boolean;
+}
+
+export interface MuleCluster {
+  cluster_id: string;
+  cluster_type: MuleClusterType;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  member_count: number;
+  members: MuleClusterMember[];
+  total_flow_amount: number;
+  transaction_count: number;
+  avg_transfer_latency_sec: number | null;
+  has_cycle: boolean;
+  cycle_nodes: string[];
+  risk_score: number;
+  identified_patterns: string[];
+  recommended_action: string;
+  detected_at: string;
+}
+
+export interface MuleClustersResponse {
+  clusters: MuleCluster[];
+  total_clusters: number;
+  high_risk_clusters: number;
+  total_flagged_accounts: number;
+  total_exposure_amount: number;
+}
+
+export interface GraphRiskPropagation {
+  source_account_id: string;
+  target_account_id: string;
+  hop_distance: number;
+  attenuation_factor: number;
+  base_risk: number;
+  propagated_risk: number;
+}
+
+export interface CounterpartyGraphInfo {
+  account_id: string;
+  account_number: string;
+  holder_name: string;
+  direction: 'INFLOW' | 'OUTFLOW';
+  total_amount: number;
+  tx_count: number;
+  risk_classification: string;
+}
+
+export interface AccountGraphIntelligence {
+  account_id: string;
+  account_number: string;
+  holder_name: string;
+  subgraph_node_count: number;
+  subgraph_edge_count: number;
+  in_degree: number;
+  out_degree: number;
+  unique_senders: number;
+  unique_receivers: number;
+  pagerank: number;
+  betweenness_centrality: number;
+  distance_to_nearest_fraud_account: number | null;
+  nearest_fraud_account_id: string | null;
+  propagated_risk_score: number;
+  is_part_of_cycle: boolean;
+  cycle_count: number;
+  mule_cluster_id: string | null;
+  mule_cluster_type: MuleClusterType | null;
+  mule_cluster_role: string | null;
+  cluster_risk_score: number | null;
+  fan_in_ratio: number;
+  fan_out_ratio: number;
+  pass_through_ratio: number | null;
+  avg_forward_latency_sec: number | null;
+  max_1h_velocity: number;
+  top_counterparties: CounterpartyGraphInfo[];
+}
+
+export interface AccountSubgraphData extends GraphTraceData {
+  root_account_id: string;
+  propagated_risks: GraphRiskPropagation[];
+  mule_clusters: MuleCluster[];
+  graph_intelligence: AccountGraphIntelligence;
+}
+
+// =============================================================================
+// PREVENTION LAYER: TRANSACTION INTERVENTION CENTRE (Phase 6)
+// =============================================================================
+
+export type InterventionReviewStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'ESCALATED'
+  | 'AUTO_RESOLVED'
+  | 'FALSE_POSITIVE';
+
+export interface InterventionItem {
+  id: string;
+  screening_id: string;
+  recommended_action: RecommendedAction;
+  review_status: InterventionReviewStatus;
+  resolved_by: string | null;
+  resolver_name: string | null;
+  resolver_role: string | null;
+  resolved_at: string | null;
+  review_notes: string | null;
+  created_at: string;
+  updated_at: string;
+
+  // Embedded screening transaction context
+  amount: number;
+  currency: string;
+  channel: string;
+  screened_at: string;
+  client_id?: string | null;
+
+  // Sender details
+  sender_account_id: string;
+  sender_account_number: string;
+  sender_holder_name: string;
+  sender_bank_name: string;
+  sender_risk_score: number;
+  sender_risk_classification: string;
+
+  // Receiver details
+  receiver_account_id: string;
+  receiver_account_number: string;
+  receiver_holder_name: string;
+  receiver_bank_name: string;
+  receiver_risk_score: number;
+  receiver_risk_classification: string;
+
+  // Risk Assessment details
+  composite_risk_score: number;
+  risk_classification: string;
+  decision: ScreeningDecision;
+  score_source: string;
+  rules_triggered: RuleTriggeredDetail[];
+}
+
+export interface InterventionAuditRecord {
+  id: string;
+  sequence_number: number;
+  screening_id: string | null;
+  intervention_id: string | null;
+  actor_user_id: string | null;
+  actor_name?: string | null;
+  actor_role: string;
+  action: string;
+  previous_hash: string;
+  entry_hash: string;
+  payload_json: Record<string, unknown>;
+  ip_address: string;
+  created_at: string;
+}
+
+export interface InterventionDetail extends InterventionItem {
+  audit_trail: InterventionAuditRecord[];
+  sender_profile?: Record<string, unknown>;
+  receiver_profile?: Record<string, unknown>;
+  graph_context?: Record<string, unknown>;
+  limitations_disclaimer: string;
+}
+
+export interface InterventionReviewPayload {
+  decision: 'APPROVED' | 'REJECTED' | 'ESCALATED' | 'FALSE_POSITIVE';
+  action?: RecommendedAction;
+  notes: string;
+}
+
+export interface HashChainVerificationReport {
+  status: 'VALID' | 'COMPROMISED';
+  total_entries_verified: number;
+  first_sequence: number | null;
+  last_sequence: number | null;
+  genesis_hash: string | null;
+  latest_hash: string | null;
+  broken_link_index: number | null;
+  broken_details: string | null;
+  verified_at: string;
+  limitations_disclaimer: string;
+}
+
+export interface InterventionMetrics {
+  total_interventions: number;
+  pending_count: number;
+  approved_count: number;
+  rejected_count: number;
+  escalated_count: number;
+  false_positive_count: number;
+  auto_resolved_count: number;
+  by_action: {
+    ALLOW: number;
+    ADDITIONAL_VERIFICATION: number;
+    HOLD_FOR_REVIEW: number;
+    REJECT_BLOCK: number;
+  };
+  total_intercepted_amount: number;
+  total_prevented_loss_amount: number;
+  override_count: number;
+  override_rate_pct: number;
+  false_positive_rate_pct: number;
+  avg_review_time_sec: number;
+  high_risk_queue_count: number;
+}
+
+
+
 

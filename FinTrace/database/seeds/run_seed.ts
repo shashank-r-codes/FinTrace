@@ -26,6 +26,16 @@ async function runSeed(): Promise<void> {
       console.log('Resetting synthetic tables...');
       await client.query(`
         TRUNCATE TABLE
+          intervention_audit_logs,
+          transaction_interventions,
+          transaction_risk_assessments,
+          transaction_screening_requests,
+          account_risk_history,
+          suspicious_account_relationships,
+          account_intelligence_profiles,
+          fraud_indicators,
+          system_settings,
+          screening_thresholds,
           citizen_notifications,
           complaint_status_history,
           audit_logs,
@@ -428,7 +438,198 @@ async function runSeed(): Promise<void> {
       );
     }
 
-    // 15. Initial Seed Audit Entry
+    // 16. Screening Thresholds
+    for (const t of data.screeningThresholds) {
+      await client.query(
+        `INSERT INTO screening_thresholds (id, version, low_max, medium_max, high_max, is_active, modified_by, reason_for_change, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (version) DO NOTHING`,
+        [t.id, t.version, t.low_max, t.medium_max, t.high_max, t.is_active, t.modified_by, t.reason_for_change, t.created_at]
+      );
+    }
+
+    // 17. System Settings
+    for (const s of data.systemSettings) {
+      await client.query(
+        `INSERT INTO system_settings (setting_key, setting_value, description, is_audited, updated_by, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = EXCLUDED.updated_at`,
+        [s.setting_key, s.setting_value, s.description, s.is_audited, s.updated_by, s.updated_at]
+      );
+    }
+
+    // 18. Fraud Indicators Catalog
+    for (const f of data.fraudIndicators) {
+      await client.query(
+        `INSERT INTO fraud_indicators (id, category, name, description, default_weight, is_active, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (id) DO NOTHING`,
+        [f.id, f.category, f.name, f.description, f.default_weight, f.is_active, f.created_at]
+      );
+    }
+
+    // 19. Account Intelligence Profiles
+    for (const p of data.accountIntelligenceProfiles) {
+      await client.query(
+        `INSERT INTO account_intelligence_profiles (
+           account_id, risk_score, risk_classification, account_status,
+           incoming_frequency_24h, outgoing_frequency_24h, incoming_volume_24h, outgoing_volume_24h,
+           avg_incoming_amount, avg_outgoing_amount, velocity_score, pass_through_ratio,
+           rapid_forward_count_24h, connected_accounts_count, suspicious_counterparties_count,
+           prior_complaints_count, mule_indicators, risk_reasons, score_source,
+           last_assessed_at, is_synthetic, created_at, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19, $20, $21, $22, $23)
+         ON CONFLICT (account_id) DO UPDATE SET
+           risk_score = EXCLUDED.risk_score,
+           risk_classification = EXCLUDED.risk_classification,
+           account_status = EXCLUDED.account_status,
+           updated_at = EXCLUDED.updated_at`,
+        [
+          p.account_id,
+          p.risk_score,
+          p.risk_classification,
+          p.account_status,
+          p.incoming_frequency_24h,
+          p.outgoing_frequency_24h,
+          p.incoming_volume_24h,
+          p.outgoing_volume_24h,
+          p.avg_incoming_amount,
+          p.avg_outgoing_amount,
+          p.velocity_score,
+          p.pass_through_ratio,
+          p.rapid_forward_count_24h,
+          p.connected_accounts_count,
+          p.suspicious_counterparties_count,
+          p.prior_complaints_count,
+          JSON.stringify(p.mule_indicators),
+          JSON.stringify(p.risk_reasons),
+          p.score_source,
+          p.last_assessed_at,
+          p.is_synthetic,
+          p.created_at,
+          p.updated_at,
+        ]
+      );
+    }
+
+    // 20. Suspicious Account Relationships
+    for (const rel of data.suspiciousRelationships) {
+      await client.query(
+        `INSERT INTO suspicious_account_relationships (
+           id, source_account_id, target_account_id, relationship_type,
+           hops_to_confirmed_fraud, risk_weight, first_observed_at, last_observed_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (source_account_id, target_account_id, relationship_type) DO NOTHING`,
+        [rel.id, rel.source_account_id, rel.target_account_id, rel.relationship_type, rel.hops_to_confirmed_fraud, rel.risk_weight, rel.first_observed_at, rel.last_observed_at]
+      );
+    }
+
+    // 21. Transaction Screening Requests
+    for (const req of data.screeningRequests) {
+      await client.query(
+        `INSERT INTO transaction_screening_requests (
+           id, idempotency_key, sender_account_id, receiver_account_id,
+           amount, currency, channel, client_id, status, decision,
+           risk_score, risk_classification, latency_ms, applied_fail_mode,
+           scenario_id, is_synthetic, screened_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+         ON CONFLICT (idempotency_key) DO NOTHING`,
+        [
+          req.id,
+          req.idempotency_key,
+          req.sender_account_id,
+          req.receiver_account_id,
+          req.amount,
+          req.currency,
+          req.channel,
+          req.client_id,
+          req.status,
+          req.decision,
+          req.risk_score,
+          req.risk_classification,
+          req.latency_ms,
+          req.applied_fail_mode,
+          req.scenario_id,
+          req.is_synthetic,
+          req.screened_at,
+        ]
+      );
+    }
+
+    // 22. Transaction Risk Assessments
+    for (const ass of data.riskAssessments) {
+      await client.query(
+        `INSERT INTO transaction_risk_assessments (
+           id, screening_id, account_risk_score, transaction_risk_score,
+           network_risk_score, composite_score, score_source,
+           thresholds_version, model_version, rules_triggered, ml_factors,
+           plain_language_explanation, limitations_disclaimer, created_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13, $14)
+         ON CONFLICT (screening_id) DO NOTHING`,
+        [
+          ass.id,
+          ass.screening_id,
+          ass.account_risk_score,
+          ass.transaction_risk_score,
+          ass.network_risk_score,
+          ass.composite_score,
+          ass.score_source,
+          ass.thresholds_version,
+          ass.model_version,
+          JSON.stringify(ass.rules_triggered),
+          JSON.stringify(ass.ml_factors),
+          ass.plain_language_explanation,
+          ass.limitations_disclaimer,
+          ass.created_at,
+        ]
+      );
+    }
+
+    // 23. Transaction Interventions
+    for (const int of data.interventions) {
+      await client.query(
+        `INSERT INTO transaction_interventions (
+           id, screening_id, recommended_action, review_status,
+           resolved_by, resolved_at, review_notes, created_at, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (screening_id) DO NOTHING`,
+        [int.id, int.screening_id, int.recommended_action, int.review_status, int.resolved_by, int.resolved_at, int.review_notes, int.created_at, int.updated_at]
+      );
+    }
+
+    // 24. Tamper-Evident Intervention Audit Logs
+    for (const audit of data.interventionAuditLogs) {
+      await client.query(
+        `INSERT INTO intervention_audit_logs (
+           id, sequence_number, screening_id, intervention_id,
+           actor_user_id, actor_role, action, previous_hash,
+           entry_hash, payload_json, ip_address, created_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12)
+         ON CONFLICT (sequence_number) DO NOTHING`,
+        [
+          audit.id,
+          audit.sequence_number,
+          audit.screening_id,
+          audit.intervention_id,
+          audit.actor_user_id,
+          audit.actor_role,
+          audit.action,
+          audit.previous_hash,
+          audit.entry_hash,
+          JSON.stringify(audit.payload_json),
+          audit.ip_address,
+          audit.created_at,
+        ]
+      );
+    }
+
+    // 25. Initial Seed Audit Entry
     await client.query(
       `INSERT INTO audit_logs (actor_user_id, actor_role, action, resource_type, resource_id, details_json)
        VALUES ($1, 'Administrator', 'SYNTHETIC_SEED_APPLIED', 'SYSTEM', 'fintrace-demo', $2::jsonb)`,

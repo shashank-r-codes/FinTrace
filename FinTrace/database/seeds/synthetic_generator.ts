@@ -250,6 +250,138 @@ export interface EvidenceSeed {
   metadata_json: Record<string, unknown>;
 }
 
+export interface ScreeningThresholdSeed {
+  id: string;
+  version: number;
+  low_max: number;
+  medium_max: number;
+  high_max: number;
+  is_active: boolean;
+  modified_by: string | null;
+  reason_for_change: string;
+  created_at: Date;
+}
+
+export interface SystemSettingSeed {
+  setting_key: string;
+  setting_value: string;
+  description: string;
+  is_audited: boolean;
+  updated_by: string | null;
+  updated_at: Date;
+}
+
+export interface FraudIndicatorSeed {
+  id: string;
+  category: 'VELOCITY' | 'NETWORK' | 'BEHAVIORAL' | 'DEVICE_LOCATION' | 'INTELLIGENCE';
+  name: string;
+  description: string;
+  default_weight: number;
+  is_active: boolean;
+  created_at: Date;
+}
+
+export interface AccountIntelligenceSeed {
+  account_id: string;
+  risk_score: number;
+  risk_classification: 'Low' | 'Medium' | 'High' | 'Critical' | 'Under Investigation';
+  account_status: 'NORMAL' | 'SUSPICIOUS_ACCOUNT' | 'SUSPECTED_MULE_ACCOUNT' | 'CONFIRMED_FRAUD_LINKED';
+  incoming_frequency_24h: number;
+  outgoing_frequency_24h: number;
+  incoming_volume_24h: number;
+  outgoing_volume_24h: number;
+  avg_incoming_amount: number;
+  avg_outgoing_amount: number;
+  velocity_score: number;
+  pass_through_ratio: number;
+  rapid_forward_count_24h: number;
+  connected_accounts_count: number;
+  suspicious_counterparties_count: number;
+  prior_complaints_count: number;
+  mule_indicators: string[];
+  risk_reasons: string[];
+  score_source: 'Trained ML prediction' | 'Rule-based risk score' | 'Synthetic demo result';
+  last_assessed_at: Date;
+  is_synthetic: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ScreeningRequestSeed {
+  id: string;
+  idempotency_key: string;
+  sender_account_id: string;
+  receiver_account_id: string;
+  amount: number;
+  currency: string;
+  channel: 'UPI' | 'IMPS' | 'NEFT' | 'RTGS' | 'CARD' | 'WALLET';
+  client_id: string;
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'TIMED_OUT';
+  decision: 'ALLOW' | 'VERIFY' | 'HOLD' | 'BLOCK';
+  risk_score: number;
+  risk_classification: 'Low' | 'Medium' | 'High' | 'Critical';
+  latency_ms: number;
+  applied_fail_mode: 'NONE' | 'FAIL_OPEN' | 'FAIL_CLOSED';
+  scenario_id: string | null;
+  is_synthetic: boolean;
+  screened_at: Date;
+}
+
+export interface RiskAssessmentSeed {
+  id: string;
+  screening_id: string;
+  account_risk_score: number;
+  transaction_risk_score: number;
+  network_risk_score: number;
+  composite_score: number;
+  score_source: 'Trained ML prediction' | 'Rule-based risk score' | 'Synthetic demo result';
+  thresholds_version: number;
+  model_version: string;
+  rules_triggered: Array<{ rule_id: string; name: string; weight: number; contribution: number }>;
+  ml_factors: Array<{ factor: string; shap_value: number; description: string }>;
+  plain_language_explanation: string;
+  limitations_disclaimer: string;
+  created_at: Date;
+}
+
+export interface InterventionSeed {
+  id: string;
+  screening_id: string;
+  recommended_action: 'ALLOW' | 'ADDITIONAL_VERIFICATION' | 'HOLD_FOR_REVIEW' | 'REJECT_BLOCK';
+  review_status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ESCALATED' | 'AUTO_RESOLVED' | 'FALSE_POSITIVE';
+  resolved_by: string | null;
+  resolved_at: Date | null;
+  review_notes: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface SuspiciousRelationshipSeed {
+  id: string;
+  source_account_id: string;
+  target_account_id: string;
+  relationship_type: 'BENEFICIARY' | 'SHARED_DEVICE' | 'COMMON_IDENTIFIER' | 'REPEATED_BURST' | 'SUSPECTED_SYNDICATE';
+  hops_to_confirmed_fraud: number;
+  risk_weight: number;
+  first_observed_at: Date;
+  last_observed_at: Date;
+}
+
+export interface InterventionAuditSeed {
+  id: string;
+  sequence_number: number;
+  screening_id: string | null;
+  intervention_id: string | null;
+  actor_user_id: string | null;
+  actor_role: string;
+  action: string;
+  previous_hash: string;
+  entry_hash: string;
+  payload_json: Record<string, unknown>;
+  ip_address: string;
+  created_at: Date;
+}
+
 export interface SyntheticDataset {
   roles: RoleSeed[];
   institutions: InstitutionSeed[];
@@ -267,6 +399,15 @@ export interface SyntheticDataset {
   evidenceRecords: EvidenceSeed[];
   complaintStatusHistory: ComplaintStatusHistorySeed[];
   citizenNotifications: CitizenNotificationSeed[];
+  screeningThresholds: ScreeningThresholdSeed[];
+  systemSettings: SystemSettingSeed[];
+  fraudIndicators: FraudIndicatorSeed[];
+  accountIntelligenceProfiles: AccountIntelligenceSeed[];
+  screeningRequests: ScreeningRequestSeed[];
+  riskAssessments: RiskAssessmentSeed[];
+  interventions: InterventionSeed[];
+  suspiciousRelationships: SuspiciousRelationshipSeed[];
+  interventionAuditLogs: InterventionAuditSeed[];
 }
 
 function deterministicUuid(namespace: string): string {
@@ -1773,6 +1914,537 @@ export function generateSyntheticDataset(): SyntheticDataset {
     },
   ];
 
+  // =============================================================================
+  // Prevention Layer Seeds
+  // =============================================================================
+  const screeningThresholds: ScreeningThresholdSeed[] = [
+    {
+      id: deterministicUuid('thresh-v1'),
+      version: 1,
+      low_max: 40.0,
+      medium_max: 65.0,
+      high_max: 80.0,
+      is_active: true,
+      modified_by: users[0].id,
+      reason_for_change: 'Initial baseline prevention threshold configuration',
+      created_at: hoursAgo(72),
+    },
+  ];
+
+  const systemSettings: SystemSettingSeed[] = [
+    {
+      setting_key: 'SCREENING_FAIL_MODE',
+      setting_value: 'FAIL_CLOSED',
+      description: 'Failsafe policy when ML or screening engine is unavailable (FAIL_OPEN vs FAIL_CLOSED)',
+      is_audited: true,
+      updated_by: users[0].id,
+      updated_at: hoursAgo(72),
+    },
+    {
+      setting_key: 'SCREENING_TIMEOUT_MS',
+      setting_value: '50',
+      description: 'Maximum latency budget for real-time pre-settlement screening in milliseconds',
+      is_audited: true,
+      updated_by: users[0].id,
+      updated_at: hoursAgo(72),
+    },
+    {
+      setting_key: 'SERVICE_AUTH_ENFORCE',
+      setting_value: 'TRUE',
+      description: 'Enforce bank service-token authentication for screening endpoints',
+      is_audited: true,
+      updated_by: users[0].id,
+      updated_at: hoursAgo(72),
+    },
+  ];
+
+  const fraudIndicators: FraudIndicatorSeed[] = [
+    {
+      id: 'FAN_IN_HIGH_VELOCITY',
+      category: 'VELOCITY',
+      name: 'Fan-In High Velocity',
+      description: 'Abnormal influx of micro-deposits from multiple distinct remitters within a short time window.',
+      default_weight: 28.0,
+      is_active: true,
+      created_at: hoursAgo(72),
+    },
+    {
+      id: 'RAPID_FORWARD_BURST',
+      category: 'VELOCITY',
+      name: 'Rapid Pass-Through Forwarding',
+      description: 'Received funds are immediately split or forwarded to downstream beneficiaries within seconds.',
+      default_weight: 26.0,
+      is_active: true,
+      created_at: hoursAgo(72),
+    },
+    {
+      id: 'DORMANT_SUDDEN_SPIKE',
+      category: 'BEHAVIORAL',
+      name: 'Dormant Account Sudden Outflow',
+      description: 'Account with minimal activity for > 90 days suddenly executes high-value outbound transfers.',
+      default_weight: 24.0,
+      is_active: true,
+      created_at: hoursAgo(72),
+    },
+    {
+      id: 'LINKED_TO_CONFIRMED_FRAUD',
+      category: 'NETWORK',
+      name: 'Direct Link to Confirmed Fraud Node',
+      description: 'Counterparty is directly connected to a verified criminal complaint node or frozen mule account.',
+      default_weight: 35.0,
+      is_active: true,
+      created_at: hoursAgo(72),
+    },
+    {
+      id: 'HIGH_RISK_COUNTERPARTY',
+      category: 'NETWORK',
+      name: 'High Risk Counterparty Relationship',
+      description: 'Counterparty possesses an active elevated risk score in the prevention registry.',
+      default_weight: 22.0,
+      is_active: true,
+      created_at: hoursAgo(72),
+    },
+    {
+      id: 'FIRST_TIME_BENEFICIARY_SPIKE',
+      category: 'BEHAVIORAL',
+      name: 'First-Time Beneficiary Outlier',
+      description: 'Outbound transfer amount exceeds 5x normal profile to a brand-new beneficiary.',
+      default_weight: 18.0,
+      is_active: true,
+      created_at: hoursAgo(72),
+    },
+    {
+      id: 'UNUSUAL_CHANNEL_BURST',
+      category: 'VELOCITY',
+      name: 'Unusual Channel Velocity Shift',
+      description: 'Sudden pivot to rapid high-value RTGS/IMPS transactions from retail channel profile.',
+      default_weight: 16.0,
+      is_active: true,
+      created_at: hoursAgo(72),
+    },
+  ];
+
+  const suspAccountMap = new Map(suspiciousAccounts.map((s) => [s.account_id, s]));
+  const accountIntelligenceProfiles: AccountIntelligenceSeed[] = accounts.map((acc, idx) => {
+    const susp = suspAccountMap.get(acc.id);
+    let risk_score = 12.0 + (idx % 7) * 2.5;
+    let risk_classification: AccountIntelligenceSeed['risk_classification'] = 'Low';
+    let account_status: AccountIntelligenceSeed['account_status'] = 'NORMAL';
+    let mule_indicators: string[] = [];
+    let risk_reasons: string[] = ['Standard low-velocity personal account profile'];
+    let pass_through_ratio = 0.05;
+    let rapid_forward_count = 0;
+    let incoming_freq = 4 + (idx % 6);
+    let outgoing_freq = 3 + (idx % 5);
+    let incoming_vol = 18500 + idx * 1200;
+    let outgoing_vol = 14200 + idx * 950;
+
+    if (susp) {
+      if (susp.complaint_id && (susp.classification === 'SUSPECTED_MULE' || susp.classification === 'CASH_OUT_CANDIDATE')) {
+        account_status = 'CONFIRMED_FRAUD_LINKED';
+        risk_classification = 'Critical';
+        risk_score = 88.5;
+        pass_through_ratio = 0.94;
+        rapid_forward_count = 7;
+        incoming_freq = 19;
+        outgoing_freq = 18;
+        incoming_vol = 485000;
+        outgoing_vol = 472000;
+        mule_indicators = ['FAN_IN_HIGH_VELOCITY', 'RAPID_FORWARD_BURST', 'LINKED_TO_CONFIRMED_FRAUD'];
+        risk_reasons = [
+          'Direct linkage to verified cybercrime complaint',
+          'High fan-in velocity from unlinked accounts (19 remitters / 24h)',
+          '94% rapid pass-through within 180 seconds of deposit',
+        ];
+      } else {
+        account_status = 'SUSPECTED_MULE_ACCOUNT';
+        risk_classification = 'High';
+        risk_score = 74.0;
+        pass_through_ratio = 0.82;
+        rapid_forward_count = 4;
+        incoming_freq = 12;
+        outgoing_freq = 11;
+        incoming_vol = 240000;
+        outgoing_vol = 225000;
+        mule_indicators = ['RAPID_FORWARD_BURST', 'HIGH_RISK_COUNTERPARTY'];
+        risk_reasons = [
+          'Elevated pass-through velocity (> 80%)',
+          'Suspicious intermediary layering counterparty activity',
+        ];
+      }
+    } else if (idx === 22 || idx === 23) {
+      account_status = 'SUSPICIOUS_ACCOUNT';
+      risk_classification = 'Medium';
+      risk_score = 56.5;
+      incoming_freq = 8;
+      outgoing_freq = 7;
+      incoming_vol = 85000;
+      outgoing_vol = 78000;
+      mule_indicators = ['FIRST_TIME_BENEFICIARY_SPIKE'];
+      risk_reasons = ['Moderate velocity acceleration with multiple first-time remitters'];
+    }
+
+    return {
+      account_id: acc.id,
+      risk_score: Math.round(risk_score * 10) / 10,
+      risk_classification,
+      account_status,
+      incoming_frequency_24h: incoming_freq,
+      outgoing_frequency_24h: outgoing_freq,
+      incoming_volume_24h: incoming_vol,
+      outgoing_volume_24h: outgoing_vol,
+      avg_incoming_amount: Math.round(incoming_vol / Math.max(1, incoming_freq)),
+      avg_outgoing_amount: Math.round(outgoing_vol / Math.max(1, outgoing_freq)),
+      velocity_score: Math.min(100, incoming_freq * 4.2),
+      pass_through_ratio,
+      rapid_forward_count_24h: rapid_forward_count,
+      connected_accounts_count: Math.min(25, incoming_freq + outgoing_freq),
+      suspicious_counterparties_count: susp ? 3 : 0,
+      prior_complaints_count: susp?.complaint_id ? 1 : 0,
+      mule_indicators,
+      risk_reasons,
+      score_source: susp ? 'Trained ML prediction' : 'Rule-based risk score',
+      last_assessed_at: hoursAgo(2),
+      is_synthetic: true,
+      created_at: hoursAgo(168),
+      updated_at: hoursAgo(2),
+    };
+  });
+
+  const suspiciousRelationships: SuspiciousRelationshipSeed[] = [
+    {
+      id: deterministicUuid('rel-1'),
+      source_account_id: accounts[1].id,
+      target_account_id: accounts[2].id,
+      relationship_type: 'REPEATED_BURST',
+      hops_to_confirmed_fraud: 1,
+      risk_weight: 1.8,
+      first_observed_at: hoursAgo(48),
+      last_observed_at: hoursAgo(6),
+    },
+    {
+      id: deterministicUuid('rel-2'),
+      source_account_id: accounts[2].id,
+      target_account_id: accounts[3].id,
+      relationship_type: 'BENEFICIARY',
+      hops_to_confirmed_fraud: 2,
+      risk_weight: 1.5,
+      first_observed_at: hoursAgo(48),
+      last_observed_at: hoursAgo(5),
+    },
+    {
+      id: deterministicUuid('rel-3'),
+      source_account_id: accounts[3].id,
+      target_account_id: accounts[4].id,
+      relationship_type: 'SUSPECTED_SYNDICATE',
+      hops_to_confirmed_fraud: 1,
+      risk_weight: 2.2,
+      first_observed_at: hoursAgo(72),
+      last_observed_at: hoursAgo(4),
+    },
+  ];
+
+  // 7 Reproducible Prevention Scenarios (Scenarios A through G)
+  const screeningRequests: ScreeningRequestSeed[] = [];
+  const riskAssessments: RiskAssessmentSeed[] = [];
+  const interventions: InterventionSeed[] = [];
+  const interventionAuditLogs: InterventionAuditSeed[] = [];
+
+  let lastHash = '0000000000000000000000000000000000000000000000000000000000000000';
+  let seqNumber = 1;
+
+  function appendAuditRecord(
+    screeningId: string | null,
+    interventionId: string | null,
+    actorUserId: string | null,
+    actorRole: string,
+    action: string,
+    payload: Record<string, unknown>,
+    ts: Date
+  ): InterventionAuditSeed {
+    const tsIso = ts.toISOString();
+    const content = `${lastHash}|${seqNumber}|${action}|${actorRole}|${JSON.stringify(payload)}|${tsIso}`;
+    const entryHash = crypto.createHash('sha256').update(content).digest('hex');
+    const record: InterventionAuditSeed = {
+      id: deterministicUuid(`audit-seq-${seqNumber}`),
+      sequence_number: seqNumber,
+      screening_id: screeningId,
+      intervention_id: interventionId,
+      actor_user_id: actorUserId,
+      actor_role: actorRole,
+      action,
+      previous_hash: lastHash,
+      entry_hash: entryHash,
+      payload_json: payload,
+      ip_address: '10.0.4.18',
+      created_at: ts,
+    };
+    lastHash = entryHash;
+    seqNumber += 1;
+    interventionAuditLogs.push(record);
+    return record;
+  }
+
+  interface ScenarioDef {
+    id: string;
+    idemp: string;
+    senderIdx: number;
+    receiverIdx: number;
+    amount: number;
+    channel: 'UPI' | 'IMPS' | 'NEFT' | 'RTGS';
+    decision: 'ALLOW' | 'VERIFY' | 'HOLD' | 'BLOCK';
+    score: number;
+    classification: 'Low' | 'Medium' | 'High' | 'Critical';
+    latencyMs: number;
+    action: 'ALLOW' | 'ADDITIONAL_VERIFICATION' | 'HOLD_FOR_REVIEW' | 'REJECT_BLOCK';
+    reviewStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ESCALATED' | 'AUTO_RESOLVED' | 'FALSE_POSITIVE';
+    resolvedBy?: string | null;
+    resolvedAt?: Date | null;
+    notes: string;
+    explanation: string;
+    rules: Array<{ rule_id: string; name: string; weight: number; contribution: number }>;
+    mlFactors: Array<{ factor: string; shap_value: number; description: string }>;
+    agoHours: number;
+  }
+
+  const scenarioDefs: ScenarioDef[] = [
+    {
+      id: 'SCENARIO_A',
+      idemp: 'FINT-IDEMP-202611-SCEN-A',
+      senderIdx: 20,
+      receiverIdx: 21,
+      amount: 2450.0,
+      channel: 'UPI',
+      decision: 'ALLOW',
+      score: 14.5,
+      classification: 'Low',
+      latencyMs: 12,
+      action: 'ALLOW',
+      reviewStatus: 'AUTO_RESOLVED',
+      notes: 'Low risk transaction auto-authorized by policy.',
+      explanation: 'Sender and receiver accounts demonstrate regular retail velocity with established relationship history.',
+      rules: [],
+      mlFactors: [{ factor: 'Established counterparty relationship', shap_value: -0.42, description: 'Prior regular transactions observed' }],
+      agoHours: 6,
+    },
+    {
+      id: 'SCENARIO_B',
+      idemp: 'FINT-IDEMP-202611-SCEN-B',
+      senderIdx: 22,
+      receiverIdx: 23,
+      amount: 48000.0,
+      channel: 'IMPS',
+      decision: 'VERIFY',
+      score: 58.5,
+      classification: 'Medium',
+      latencyMs: 18,
+      action: 'ADDITIONAL_VERIFICATION',
+      reviewStatus: 'PENDING',
+      notes: 'Additional 2FA OTP prompt recommended for first-time unverified beneficiary.',
+      explanation: 'Transfer exceeds 3x typical peer-to-peer amount for newly added beneficiary account.',
+      rules: [{ rule_id: 'FIRST_TIME_BENEFICIARY_SPIKE', name: 'First-Time Beneficiary Outlier', weight: 18.0, contribution: 18.0 }],
+      mlFactors: [{ factor: 'Outbound amount deviation', shap_value: 0.38, description: 'Amount is 3.4x standard outbound deviation' }],
+      agoHours: 5,
+    },
+    {
+      id: 'SCENARIO_C',
+      idemp: 'FINT-IDEMP-202611-SCEN-C',
+      senderIdx: 24,
+      receiverIdx: 2,
+      amount: 185000.0,
+      channel: 'IMPS',
+      decision: 'HOLD',
+      score: 78.4,
+      classification: 'High',
+      latencyMs: 22,
+      action: 'HOLD_FOR_REVIEW',
+      reviewStatus: 'ESCALATED',
+      notes: 'Escalated to Nodal Officer: Receiver shows 6 fan-in deposits within 30m followed by rapid pass-through forwarding.',
+      explanation: 'Receiving account displays classic mule burst: high fan-in velocity with 94% outbound forwarding ratio.',
+      rules: [
+        { rule_id: 'FAN_IN_HIGH_VELOCITY', name: 'Fan-In High Velocity', weight: 28.0, contribution: 28.0 },
+        { rule_id: 'RAPID_FORWARD_BURST', name: 'Rapid Pass-Through Forwarding', weight: 26.0, contribution: 26.0 },
+      ],
+      mlFactors: [{ factor: 'Rapid pass-through ratio', shap_value: 0.82, description: 'Outflow within 120 seconds of receipt' }],
+      agoHours: 4,
+    },
+    {
+      id: 'SCENARIO_D',
+      idemp: 'FINT-IDEMP-202611-SCEN-D',
+      senderIdx: 25,
+      receiverIdx: 3,
+      amount: 220000.0,
+      channel: 'NEFT',
+      decision: 'HOLD',
+      score: 81.2,
+      classification: 'High',
+      latencyMs: 25,
+      action: 'HOLD_FOR_REVIEW',
+      reviewStatus: 'PENDING',
+      notes: 'Receiver directly linked to 3 flagged mule accounts in transaction network.',
+      explanation: 'Receiver account has high graph centrality linking multiple identified mule accounts.',
+      rules: [
+        { rule_id: 'HIGH_RISK_COUNTERPARTY', name: 'High Risk Counterparty Relationship', weight: 22.0, contribution: 22.0 },
+        { rule_id: 'LINKED_TO_CONFIRMED_FRAUD', name: 'Direct Link to Confirmed Fraud Node', weight: 35.0, contribution: 35.0 },
+      ],
+      mlFactors: [{ factor: 'Graph neighbor risk score', shap_value: 0.74, description: 'Connected to 3 suspicious accounts' }],
+      agoHours: 3,
+    },
+    {
+      id: 'SCENARIO_E',
+      idemp: 'FINT-IDEMP-202611-SCEN-E',
+      senderIdx: 26,
+      receiverIdx: 27,
+      amount: 475000.0,
+      channel: 'RTGS',
+      decision: 'HOLD',
+      score: 74.8,
+      classification: 'High',
+      latencyMs: 19,
+      action: 'HOLD_FOR_REVIEW',
+      reviewStatus: 'PENDING',
+      notes: 'Sender dormant for > 180 days suddenly issuing maximum RTGS limit to new payee.',
+      explanation: 'Sudden high-value RTGS transfer on account with zero activity during previous 6 months.',
+      rules: [{ rule_id: 'DORMANT_SUDDEN_SPIKE', name: 'Dormant Account Sudden Outflow', weight: 24.0, contribution: 24.0 }],
+      mlFactors: [{ factor: 'Inactivity duration vs amount', shap_value: 0.69, description: '184 days dormant before transfer' }],
+      agoHours: 2,
+    },
+    {
+      id: 'SCENARIO_F',
+      idemp: 'FINT-IDEMP-202611-SCEN-F',
+      senderIdx: 28,
+      receiverIdx: 4,
+      amount: 950000.0,
+      channel: 'RTGS',
+      decision: 'BLOCK',
+      score: 94.6,
+      classification: 'Critical',
+      latencyMs: 28,
+      action: 'REJECT_BLOCK',
+      reviewStatus: 'REJECTED',
+      notes: 'Simulated payment block: Critical risk with direct link to active cybercrime complaint and massive velocity burst.',
+      explanation: 'Critical risk: receiving account is confirmed fraud-linked with pending active investigation freeze order.',
+      rules: [
+        { rule_id: 'LINKED_TO_CONFIRMED_FRAUD', name: 'Direct Link to Confirmed Fraud Node', weight: 35.0, contribution: 35.0 },
+        { rule_id: 'FAN_IN_HIGH_VELOCITY', name: 'Fan-In High Velocity', weight: 28.0, contribution: 28.0 },
+        { rule_id: 'RAPID_FORWARD_BURST', name: 'Rapid Pass-Through Forwarding', weight: 26.0, contribution: 26.0 },
+      ],
+      mlFactors: [{ factor: 'Confirmed fraud linkage distance', shap_value: 0.98, description: '1-hop neighbor of Complaint CMP-2026-0004' }],
+      agoHours: 1,
+    },
+    {
+      id: 'SCENARIO_G',
+      idemp: 'FINT-IDEMP-202611-SCEN-G',
+      senderIdx: 29,
+      receiverIdx: 30,
+      amount: 1200000.0,
+      channel: 'RTGS',
+      decision: 'HOLD',
+      score: 72.0,
+      classification: 'High',
+      latencyMs: 24,
+      action: 'HOLD_FOR_REVIEW',
+      reviewStatus: 'FALSE_POSITIVE',
+      resolvedBy: users[1].id,
+      resolvedAt: minsAgo(45),
+      notes: 'Officer review completed: Corporate vendor invoice verified against purchase contract. Legitimate commercial transfer marked as false positive.',
+      explanation: 'High transaction velocity triggered temporary hold; human review confirmed legitimate month-end corporate payroll/vendor settlement.',
+      rules: [{ rule_id: 'UNUSUAL_CHANNEL_BURST', name: 'Unusual Channel Velocity Shift', weight: 16.0, contribution: 16.0 }],
+      mlFactors: [{ factor: 'Transaction amount deviation', shap_value: 0.52, description: 'Outbound volume spike' }],
+      agoHours: 1,
+    },
+  ];
+
+  for (const s of scenarioDefs) {
+    const sId = deterministicUuid(`screen-req-${s.id}`);
+    const intId = deterministicUuid(`screen-int-${s.id}`);
+    const assessId = deterministicUuid(`screen-assess-${s.id}`);
+    const reqTs = hoursAgo(s.agoHours);
+
+    screeningRequests.push({
+      id: sId,
+      idempotency_key: s.idemp,
+      sender_account_id: accounts[s.senderIdx].id,
+      receiver_account_id: accounts[s.receiverIdx].id,
+      amount: s.amount,
+      currency: 'INR',
+      channel: s.channel,
+      client_id: 'BANK_CORE_SWITCH',
+      status: 'COMPLETED',
+      decision: s.decision,
+      risk_score: s.score,
+      risk_classification: s.classification,
+      latency_ms: s.latencyMs,
+      applied_fail_mode: 'NONE',
+      scenario_id: s.id,
+      is_synthetic: true,
+      screened_at: reqTs,
+    });
+
+    riskAssessments.push({
+      id: assessId,
+      screening_id: sId,
+      account_risk_score: Math.max(10, s.score - 15),
+      transaction_risk_score: s.score,
+      network_risk_score: s.classification === 'Critical' || s.classification === 'High' ? 82.0 : 20.0,
+      composite_score: s.score,
+      score_source: s.score > 60 ? 'Trained ML prediction' : 'Rule-based risk score',
+      thresholds_version: 1,
+      model_version: 'v1.0-rules-xgb',
+      rules_triggered: s.rules,
+      ml_factors: s.mlFactors,
+      plain_language_explanation: s.explanation,
+      limitations_disclaimer: 'FinTrace returns RECOMMENDATIONS. Simulated intervention only.',
+      created_at: reqTs,
+    });
+
+    interventions.push({
+      id: intId,
+      screening_id: sId,
+      recommended_action: s.action,
+      review_status: s.reviewStatus,
+      resolved_by: s.resolvedBy ?? null,
+      resolved_at: s.resolvedAt ?? null,
+      review_notes: s.notes,
+      created_at: reqTs,
+      updated_at: s.resolvedAt ?? reqTs,
+    });
+
+    // 1. Audit: Screening initiated & evaluated
+    appendAuditRecord(
+      sId,
+      intId,
+      null,
+      'BANK_CORE_SWITCH',
+      'SCREENING_EVALUATED',
+      {
+        decision: s.decision,
+        risk_score: s.score,
+        amount: s.amount,
+        sender_account: accounts[s.senderIdx].account_number,
+        receiver_account: accounts[s.receiverIdx].account_number,
+      },
+      reqTs
+    );
+
+    // 2. Audit: If human resolved (Scenario G or resolved)
+    if (s.resolvedBy && s.resolvedAt) {
+      appendAuditRecord(
+        sId,
+        intId,
+        s.resolvedBy,
+        'Senior Investigator',
+        s.reviewStatus === 'FALSE_POSITIVE' ? 'INTERVENTION_MARKED_FALSE_POSITIVE' : 'INTERVENTION_APPROVED',
+        {
+          review_status: s.reviewStatus,
+          notes: s.notes,
+          resolved_at: s.resolvedAt.toISOString(),
+        },
+        s.resolvedAt
+      );
+    }
+  }
+
   return {
     roles,
     institutions,
@@ -1790,5 +2462,14 @@ export function generateSyntheticDataset(): SyntheticDataset {
     evidenceRecords,
     complaintStatusHistory,
     citizenNotifications,
+    screeningThresholds,
+    systemSettings,
+    fraudIndicators,
+    accountIntelligenceProfiles,
+    screeningRequests,
+    riskAssessments,
+    interventions,
+    suspiciousRelationships,
+    interventionAuditLogs,
   };
 }

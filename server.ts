@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from 'cors';
@@ -6,6 +7,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { createApiRouter } from './server/routes.ts';
+import { dbStore } from './server/store.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +52,22 @@ async function startServer(): Promise<void> {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+
+    // Guaranteed SPA fallback for any non-API GET request
+    app.use('*', async (req, res, next) => {
+      if (req.method !== 'GET' || req.originalUrl.startsWith('/api')) {
+        return next();
+      }
+      try {
+        const url = req.originalUrl;
+        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distDir = path.resolve(__dirname, 'dist');
     app.use(express.static(distDir));
@@ -59,7 +77,19 @@ async function startServer(): Promise<void> {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
+    console.log(`=============================================================================`);
     console.log(`FinTrace Command Centre & API listening on http://0.0.0.0:${PORT}`);
+    console.log(`[Prevention Layer] Mounted routes verified:`);
+    console.log(`  - GET  /api/v1/accounts/intelligence (Account Intelligence Registry)`);
+    console.log(`  - GET  /api/v1/accounts/intelligence/filters (Filter Options)`);
+    console.log(`  - GET  /api/v1/accounts/intelligence/summary (Risk Telemetry Summary)`);
+    console.log(`  - GET  /api/v1/interventions         (Transaction Intervention Centre Queue)`);
+    console.log(`  - GET  /api/v1/interventions/metrics (Intervention Metrics & KPI Summary)`);
+    console.log(`  - GET  /api/v1/interventions/verify-chain (SHA-256 Hash Chain Verification)`);
+    console.log(`  - GET  /api/v1/graph/mule-clusters   (Mule Syndicates & Ring Detection)`);
+    console.log(`  - POST /api/v1/screening/screen      (Real-Time Screening Hot Path)`);
+    console.log(`[Prevention Data] Profiles: ${dbStore.accountIntelligenceProfiles.length}, Screening Requests: ${dbStore.screeningRequests.length}, Interventions: ${dbStore.interventions.length}`);
+    console.log(`=============================================================================`);
   });
 }
 

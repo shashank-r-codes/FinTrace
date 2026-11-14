@@ -393,47 +393,47 @@ export function NetworkGraphPage() {
 
   return (
     <CommandLayout
-      title="Network & Multi-Hop Trace Graph"
-      section="Intelligence Engines"
+      title="Network flow and multi-hop trace"
+      section="Core operations"
       actions={
         <button
           type="button"
           onClick={() => void runTrace()}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-[5px] bg-accent-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-strong-hover disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-[8px] bg-accent-strong px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-strong-hover disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer transition-colors duration-120"
         >
           <Play className="h-3.5 w-3.5" aria-hidden="true" />
-          {loading ? 'Tracing...' : 'Run Graph Trace'}
+          {loading ? 'Tracing...' : 'Run graph trace'}
         </button>
       }
     >
       {error ? <ErrorDataState message={error} onRetry={() => void runTrace()} /> : null}
 
       {/* Trace Controls */}
-      <section className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-3">
+      <section className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-[8px] border border-border-subtle bg-subtle/50 p-0.5">
             <button
               type="button"
               onClick={() => setMode('complaint')}
-              className={`rounded-[5px] px-3 py-1.5 text-xs font-medium cursor-pointer ${
+              className={`rounded-[6px] px-3 py-1.5 text-xs transition-colors cursor-pointer ${
                 mode === 'complaint'
-                  ? 'bg-highlight text-accent-strong border border-accent-strong/40 font-semibold'
-                  : 'bg-subtle text-muted border border-border-subtle hover:text-heading'
+                  ? 'bg-card text-heading font-medium shadow-xs border border-border-strong/40'
+                  : 'text-muted hover:text-heading'
               }`}
             >
-              Complaint Flow Graph
+              Complaint flow graph
             </button>
             <button
               type="button"
               onClick={() => setMode('account')}
-              className={`rounded-[5px] px-3 py-1.5 text-xs font-medium cursor-pointer ${
+              className={`rounded-[6px] px-3 py-1.5 text-xs transition-colors cursor-pointer ${
                 mode === 'account'
-                  ? 'bg-highlight text-accent-strong border border-accent-strong/40 font-semibold'
-                  : 'bg-subtle text-muted border border-border-subtle hover:text-heading'
+                  ? 'bg-card text-heading font-medium shadow-xs border border-border-strong/40'
+                  : 'text-muted hover:text-heading'
               }`}
             >
-              Account Multi-Hop Trace
+              Account multi-hop trace
             </button>
           </div>
 
@@ -442,19 +442,19 @@ export function NetworkGraphPage() {
               type="button"
               onClick={() => void handleFindPaths()}
               disabled={!graphData || graphData.nodes.length === 0 || pathsLoading}
-              className="inline-flex items-center gap-1.5 rounded-[5px] border border-amber-300 bg-[#FEF3C7] px-2.5 py-1.5 text-xs font-semibold text-[#92400E] hover:opacity-90 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200 disabled:opacity-40 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-border-subtle bg-card px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-subtle disabled:opacity-40 cursor-pointer transition-colors"
             >
-              <Route className="h-3.5 w-3.5" aria-hidden="true" />
-              {pathsLoading ? 'Finding Paths...' : 'Detect Suspicious Paths'}
+              <Route className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
+              {pathsLoading ? 'Finding paths...' : 'Detect suspicious paths'}
             </button>
             {mode === 'account' ? (
               <button
                 type="button"
                 onClick={() => setShowCteVerify((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-highlight cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-[8px] border border-border-subtle bg-card px-2.5 py-1.5 text-xs font-medium text-heading hover:bg-subtle cursor-pointer transition-colors"
               >
                 <Database className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
-                {showCteVerify ? 'Hide SQL CTE' : 'SQL CTE Cross-Check'}
+                {showCteVerify ? 'Hide SQL CTE' : 'SQL CTE cross-check'}
               </button>
             ) : null}
           </div>
@@ -464,12 +464,12 @@ export function NetworkGraphPage() {
           {mode === 'complaint' ? (
             <div className="lg:col-span-3">
               <label className="block text-[11px] font-medium text-muted mb-1">
-                Select Complaint
+                Select complaint
               </label>
               <select
                 value={selectedComplaintId}
                 onChange={(e) => setSelectedComplaintId(e.target.value)}
-                className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none"
+                className="w-full rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
               >
                 {complaints.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -482,7 +482,7 @@ export function NetworkGraphPage() {
             <>
               <div className="lg:col-span-2">
                 <label className="block text-[11px] font-medium text-muted mb-1">
-                  Root Account (Number or UUID)
+                  Root account (number or UUID)
                 </label>
                 <datalist id="graph-accounts-list">
                   {accounts.map((a) => (
@@ -497,7 +497,7 @@ export function NetworkGraphPage() {
                   value={accountQuery}
                   onChange={(e) => setAccountQuery(e.target.value)}
                   placeholder="e.g. SYNVICT00001 or UUID"
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none"
+                  className="w-full rounded-[8px] border border-border-subtle bg-app px-3 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none transition-colors"
                 />
               </div>
               <div>
@@ -507,21 +507,21 @@ export function NetworkGraphPage() {
                 <select
                   value={direction}
                   onChange={(e) => setDirection(e.target.value as TraceDirection)}
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
+                  className="w-full rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
                 >
-                  <option value="forward">Forward (Money Flow)</option>
-                  <option value="reverse">Reverse (Funding Origin)</option>
+                  <option value="forward">Forward (Money flow)</option>
+                  <option value="reverse">Reverse (Funding origin)</option>
                   <option value="both">Bidirectional (Both)</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-muted mb-1">
-                  Hop Depth (1–6)
+                  Hop depth (1–6)
                 </label>
                 <select
                   value={depth}
                   onChange={(e) => setDepth(Number(e.target.value))}
-                  className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs font-mono text-heading"
+                  className="w-full rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs font-mono text-heading focus:border-accent-strong focus:outline-none transition-colors"
                 >
                   {[1, 2, 3, 4, 5, 6].map((d) => (
                     <option key={d} value={d}>
@@ -535,15 +535,15 @@ export function NetworkGraphPage() {
 
           <div>
             <label className="block text-[11px] font-medium text-muted mb-1">
-              Graph Layout
+              Graph layout
             </label>
             <select
               value={layoutName}
               onChange={(e) => setLayoutName(e.target.value as LayoutType)}
-              className="w-full rounded-[5px] border border-border-subtle bg-subtle px-2.5 py-1.5 text-xs text-heading"
+              className="w-full rounded-[8px] border border-border-subtle bg-app px-2.5 py-1.5 text-xs text-heading focus:border-accent-strong focus:outline-none transition-colors"
             >
               <option value="breadthfirst">Layered DAG (Breadthfirst)</option>
-              <option value="cose">Force-Directed (CoSE)</option>
+              <option value="cose">Force-directed (CoSE)</option>
               <option value="circle">Circular</option>
               <option value="grid">Grid</option>
             </select>
@@ -553,13 +553,13 @@ export function NetworkGraphPage() {
 
       {/* Main Graph Canvas + Metrics Inspector */}
       <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-8 rounded-[6px] border border-border-subtle bg-card flex flex-col overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-subtle px-4 py-2.5">
+        <div className="xl:col-span-8 rounded-[12px] border border-border-subtle bg-card flex flex-col overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-subtle/50 px-4 py-2.5">
             <div className="flex items-center gap-3 text-xs">
-              <span className="font-semibold text-heading">Verified Account Flow Canvas</span>
+              <span className="font-medium text-heading">Account flow canvas</span>
               {graphData ? (
                 <span className="font-mono text-[11px] text-muted tabular-nums">
-                  {graphData.summary.node_count} nodes · {graphData.summary.edge_count} real DB edges ·{' '}
+                  {graphData.summary.node_count} nodes · {graphData.summary.edge_count} ledger edges ·{' '}
                   {formatInr(graphData.summary.total_amount)}
                 </span>
               ) : null}
@@ -569,24 +569,24 @@ export function NetworkGraphPage() {
               <button
                 type="button"
                 onClick={() => cyInstanceRef.current?.zoom(cyInstanceRef.current.zoom() * 1.2)}
-                className="rounded p-1.5 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
-                title="Zoom In"
+                className="rounded-[6px] p-1.5 text-muted hover:bg-subtle hover:text-heading cursor-pointer transition-colors"
+                title="Zoom in"
               >
                 <ZoomIn className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => cyInstanceRef.current?.zoom(cyInstanceRef.current.zoom() * 0.8)}
-                className="rounded p-1.5 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
-                title="Zoom Out"
+                className="rounded-[6px] p-1.5 text-muted hover:bg-subtle hover:text-heading cursor-pointer transition-colors"
+                title="Zoom out"
               >
                 <ZoomOut className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => cyInstanceRef.current?.fit(undefined, 28)}
-                className="rounded p-1.5 text-muted hover:bg-highlight hover:text-heading cursor-pointer"
-                title="Fit Graph"
+                className="rounded-[6px] p-1.5 text-muted hover:bg-subtle hover:text-heading cursor-pointer transition-colors"
+                title="Fit graph"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
               </button>
@@ -597,10 +597,10 @@ export function NetworkGraphPage() {
                     setHighlightedPathIdx(null);
                     setHighlightedCycleIdx(null);
                   }}
-                  className="ml-1 inline-flex items-center gap-1 rounded-[4px] border border-border-subtle px-2 py-1 text-[11px] text-heading hover:bg-highlight cursor-pointer"
+                  className="ml-1 inline-flex items-center gap-1 rounded-[6px] border border-border-subtle bg-card px-2 py-1 text-[11px] font-medium text-heading hover:bg-subtle cursor-pointer transition-colors"
                 >
                   <RefreshCw className="h-3 w-3" />
-                  Clear Highlight
+                  Clear highlight
                 </button>
               ) : null}
             </div>
@@ -609,7 +609,7 @@ export function NetworkGraphPage() {
           <div className="relative h-[460px] bg-app">
             {loading ? (
               <div className="flex h-full items-center justify-center font-mono text-xs text-muted">
-                Building NetworkX subgraph from PostgreSQL ledger...
+                Building NetworkX subgraph from database ledger...
               </div>
             ) : !graphData || graphData.nodes.length === 0 ? (
               <div className="flex h-full items-center justify-center">
@@ -624,25 +624,25 @@ export function NetworkGraphPage() {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle bg-subtle px-4 py-2 text-[11px] text-body">
+          <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle bg-subtle/50 px-4 py-2 text-[11px] text-body">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-[#DC2626] bg-[#FEE2E2] dark:border-red-500 dark:bg-red-950" />
-              Cash-Out Candidate
+              <span className="h-2.5 w-2.5 rounded-[3px] border border-[#DC2626] bg-[#FEE2E2] dark:border-red-500 dark:bg-red-950" />
+              Cash-out candidate
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-[#D97706] bg-[#FEF3C7] dark:border-amber-500 dark:bg-amber-950" />
-              Suspected Mule
+              <span className="h-2.5 w-2.5 rounded-[3px] border border-[#D97706] bg-[#FEF3C7] dark:border-amber-500 dark:bg-amber-950" />
+              Suspected mule
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-[#3489E8] bg-[#DCEEFF] dark:border-sky-400 dark:bg-sky-950" />
-              Layering Node
+              <span className="h-2.5 w-2.5 rounded-[3px] border border-[#3489E8] bg-[#DCEEFF] dark:border-sky-400 dark:bg-sky-950" />
+              Layering node
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[2px] border border-slate-500 bg-slate-200 dark:border-slate-400 dark:bg-slate-700" />
-              Frozen Account
+              <span className="h-2.5 w-2.5 rounded-[3px] border border-slate-500 bg-slate-200 dark:border-slate-400 dark:bg-slate-700" />
+              Frozen account
             </span>
             <span className="ml-auto font-mono text-[10px] text-muted">
-              Every edge maps 1:1 to a PostgreSQL transactions row
+              Every edge maps 1:1 to a database transaction row
             </span>
           </div>
         </div>
@@ -650,14 +650,14 @@ export function NetworkGraphPage() {
         {/* Right Inspector Panel */}
         <div className="xl:col-span-4 space-y-4">
           {/* Selected Node or Edge */}
-          <div className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-3">
+          <div className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-3">
             <div className="flex items-center justify-between border-b border-border-subtle pb-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-heading">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
                 {selectedNode
-                  ? 'Node Metrics Inspector'
+                  ? 'Node metrics inspector'
                   : selectedEdge
-                    ? 'Transaction Edge Inspector'
-                    : 'Network Topology Summary'}
+                    ? 'Transaction edge inspector'
+                    : 'Network topology summary'}
               </h2>
               {selectedNode ? (
                 <StatusSignal
@@ -673,46 +673,46 @@ export function NetworkGraphPage() {
             {selectedNode ? (
               <div className="space-y-3 text-xs">
                 <div>
-                  <p className="font-mono text-sm font-bold text-heading">{selectedNode.account_number}</p>
+                  <p className="font-mono text-sm font-semibold text-heading">{selectedNode.account_number}</p>
                   <p className="text-body">
                     {selectedNode.holder_name} · {selectedNode.branch_city} ({selectedNode.account_type})
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 font-mono text-[11px] tabular-nums">
-                  <div className="rounded border border-border-subtle bg-subtle p-2">
-                    <p className="text-muted">Inflow / Outflow</p>
+                  <div className="rounded-[8px] border border-border-subtle bg-subtle/40 p-2">
+                    <p className="text-muted">Inflow / outflow</p>
                     <p className="text-heading mt-0.5">
                       {formatInr(selectedNode.total_inflow)} / {formatInr(selectedNode.total_outflow)}
                     </p>
                   </div>
-                  <div className="rounded border border-border-subtle bg-subtle p-2">
-                    <p className="text-muted">Pass-Through Ratio</p>
+                  <div className="rounded-[8px] border border-border-subtle bg-subtle/40 p-2">
+                    <p className="text-muted">Pass-through ratio</p>
                     <p className="text-amber-700 dark:text-amber-300 mt-0.5">
                       {selectedNode.pass_through_ratio !== null
                         ? `${(selectedNode.pass_through_ratio * 100).toFixed(1)}%`
                         : '—'}
                     </p>
                   </div>
-                  <div className="rounded border border-border-subtle bg-subtle p-2">
-                    <p className="text-muted">Avg Fwd Latency</p>
+                  <div className="rounded-[8px] border border-border-subtle bg-subtle/40 p-2">
+                    <p className="text-muted">Avg fwd latency</p>
                     <p className="text-accent-strong mt-0.5">
                       {selectedNode.avg_forward_latency_sec !== null
                         ? `${selectedNode.avg_forward_latency_sec}s`
                         : '—'}
                     </p>
                   </div>
-                  <div className="rounded border border-border-subtle bg-subtle p-2">
-                    <p className="text-muted">1h Velocity / Fan</p>
+                  <div className="rounded-[8px] border border-border-subtle bg-subtle/40 p-2">
+                    <p className="text-muted">1h Velocity / fan</p>
                     <p className="text-heading mt-0.5">
                       {selectedNode.velocity_1h} tx/h · {selectedNode.fan_in}→{selectedNode.fan_out}
                     </p>
                   </div>
-                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                  <div className="rounded-[8px] border border-border-subtle bg-subtle/40 p-2">
                     <p className="text-muted">PageRank</p>
                     <p className="text-heading mt-0.5">{selectedNode.pagerank.toFixed(4)}</p>
                   </div>
-                  <div className="rounded border border-border-subtle bg-subtle p-2">
+                  <div className="rounded-[8px] border border-border-subtle bg-subtle/40 p-2">
                     <p className="text-muted">Betweenness</p>
                     <p className="text-heading mt-0.5">
                       {selectedNode.betweenness_centrality.toFixed(4)}
@@ -728,21 +728,21 @@ export function NetworkGraphPage() {
                       setAccountQuery(selectedNode.account_number);
                       setDirection('forward');
                     }}
-                    className="rounded-[4px] border border-border-subtle bg-subtle px-2.5 py-1 text-[11px] font-medium text-heading hover:bg-highlight cursor-pointer"
+                    className="rounded-[8px] border border-border-subtle bg-card px-2.5 py-1 text-[11px] font-medium text-heading hover:bg-subtle cursor-pointer transition-colors"
                   >
-                    Set as Trace Root
+                    Set as trace root
                   </button>
                   <Link
                     to={`/fraud-ml?accountId=${encodeURIComponent(selectedNode.id)}`}
-                    className="rounded-[4px] bg-accent-strong px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-accent-strong-hover"
+                    className="rounded-[8px] bg-accent-strong px-2.5 py-1 text-[11px] font-medium text-white hover:bg-accent-strong-hover transition-colors"
                   >
-                    Score in ML Engine
+                    Score in ML engine
                   </Link>
                 </div>
               </div>
             ) : selectedEdge ? (
               <div className="space-y-2 text-xs">
-                <p className="font-mono font-bold text-accent-strong">{selectedEdge.txn_id}</p>
+                <p className="font-mono font-medium text-accent-strong">{selectedEdge.txn_id}</p>
                 <p className="font-mono text-heading text-sm tabular-nums">
                   {formatInr(selectedEdge.amount)} · {selectedEdge.channel}
                 </p>
@@ -751,16 +751,16 @@ export function NetworkGraphPage() {
                 </p>
                 <StatusSignal
                   level={selectedEdge.is_flagged_fraud ? 'CRITICAL' : 'LOW'}
-                  label={selectedEdge.is_flagged_fraud ? 'Flagged Fraud Edge' : 'Normal Edge'}
+                  label={selectedEdge.is_flagged_fraud ? 'Flagged fraud edge' : 'Normal edge'}
                 />
               </div>
             ) : (
               <div className="space-y-2 text-xs text-muted">
                 <p>Click any account node or transaction arrow on the canvas to inspect centrality, latency, and pass-through metrics.</p>
                 {sortedNodes[0] ? (
-                  <div className="rounded border border-border-subtle bg-subtle p-2.5">
-                    <p className="text-[11px] text-muted">Highest PageRank Node</p>
-                    <p className="font-mono text-xs font-semibold text-heading mt-0.5">
+                  <div className="rounded-[8px] border border-border-subtle bg-subtle/40 p-2.5">
+                    <p className="text-[11px] text-muted">Highest PageRank node</p>
+                    <p className="font-mono text-xs font-medium text-heading mt-0.5">
                       {sortedNodes[0].account_number} · {sortedNodes[0].holder_name}
                     </p>
                     <p className="font-mono text-[11px] text-accent-strong tabular-nums">
@@ -776,15 +776,15 @@ export function NetworkGraphPage() {
           </div>
 
           {/* Cycles & Layering Detection */}
-          <div className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-2.5">
+          <div className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <AlertTriangle
-                  className={`h-4 w-4 ${graphData?.summary.has_cycles ? 'text-[#DC2626] dark:text-red-400' : 'text-muted'}`}
+                  className={`h-4 w-4 ${graphData?.summary.has_cycles ? 'text-red-600 dark:text-red-400' : 'text-muted'}`}
                   aria-hidden="true"
                 />
-                <h3 className="text-xs font-semibold text-heading">
-                  Layering Cycles ({graphData?.cycles.length ?? 0})
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  Layering cycles ({graphData?.cycles.length ?? 0})
                 </h3>
               </div>
             </div>
@@ -805,10 +805,10 @@ export function NetworkGraphPage() {
                         setHighlightedPathIdx(null);
                         setHighlightedCycleIdx(highlightedCycleIdx === idx ? null : idx);
                       }}
-                      className={`w-full rounded-[4px] border px-2.5 py-1.5 text-left font-mono text-[11px] cursor-pointer ${
+                      className={`w-full rounded-[6px] border px-2.5 py-1.5 text-left font-mono text-[11px] cursor-pointer transition-colors ${
                         highlightedCycleIdx === idx
-                          ? 'border-amber-400 bg-[#FEF3C7] text-[#92400E] dark:bg-yellow-950/30 dark:text-yellow-200'
-                          : 'border-border-subtle bg-subtle text-body hover:bg-highlight'
+                          ? 'border-accent-strong/40 bg-accent-strong/10 text-heading'
+                          : 'border-border-subtle bg-subtle/50 text-body hover:bg-highlight'
                       }`}
                     >
                       {labels.join(' → ')} → {labels[0]}
@@ -821,11 +821,11 @@ export function NetworkGraphPage() {
 
           {/* Suspicious Paths */}
           {paths.length > 0 ? (
-            <div className="rounded-[6px] border border-border-subtle bg-card p-4 space-y-2.5">
+            <div className="rounded-[12px] border border-border-subtle bg-card p-4 space-y-2.5">
               <div className="flex items-center gap-1.5">
-                <GitBranch className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                <h3 className="text-xs font-semibold text-heading">
-                  Suspicious Flow Paths ({paths.length})
+                <GitBranch className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  Suspicious flow paths ({paths.length})
                 </h3>
               </div>
               <div className="space-y-1.5 max-h-44 overflow-y-auto">
@@ -837,16 +837,16 @@ export function NetworkGraphPage() {
                       setHighlightedCycleIdx(null);
                       setHighlightedPathIdx(highlightedPathIdx === idx ? null : idx);
                     }}
-                    className={`w-full rounded-[4px] border px-2.5 py-2 text-left cursor-pointer ${
+                    className={`w-full rounded-[6px] border px-2.5 py-2 text-left cursor-pointer transition-colors ${
                       highlightedPathIdx === idx
-                        ? 'border-amber-400 bg-[#FEF3C7] dark:bg-yellow-950/30'
-                        : 'border-border-subtle bg-subtle hover:bg-highlight'
+                        ? 'border-accent-strong/40 bg-accent-strong/10'
+                        : 'border-border-subtle bg-subtle/50 hover:bg-highlight'
                     }`}
                   >
                     <p className="font-mono text-[11px] text-heading break-all">
                       {p.path_account_numbers.join(' → ')}
                     </p>
-                    <p className="font-mono text-[10px] text-amber-700 dark:text-amber-300 mt-0.5 tabular-nums">
+                    <p className="font-mono text-[10px] text-muted mt-0.5 tabular-nums">
                       {p.hop_count} hops · Bottleneck {formatInr(p.bottleneck_amount)}
                     </p>
                   </button>
@@ -859,16 +859,16 @@ export function NetworkGraphPage() {
 
       {/* SQL Recursive CTE Verification Drawer */}
       {showCteVerify && cteEdges ? (
-        <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
-          <div className="border-b border-border-subtle bg-subtle px-4 py-2.5 flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-heading">
-              PostgreSQL Recursive CTE Verification ({cteEdges.length} hop edges)
+        <section className="rounded-[12px] border border-border-subtle bg-card overflow-hidden">
+          <div className="border-b border-border-subtle bg-subtle/50 px-4 py-2.5 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Database recursive CTE verification ({cteEdges.length} hop edges)
             </h2>
             <span className="font-mono text-[11px] text-accent-strong">engine: postgresql-recursive-cte</span>
           </div>
           <div className="overflow-x-auto max-h-60">
             <table className="w-full text-left text-xs">
-              <thead className="bg-highlight text-[11px] text-heading border-b border-border-subtle">
+              <thead className="bg-highlight/40 text-[11px] font-medium uppercase tracking-wider text-muted border-b border-border-subtle">
                 <tr>
                   <th className="px-4 py-2">Depth</th>
                   <th className="px-4 py-2">TXN ID</th>
@@ -879,8 +879,8 @@ export function NetworkGraphPage() {
               </thead>
               <tbody className="divide-y divide-border-subtle font-mono text-[11px]">
                 {cteEdges.map((edge) => (
-                  <tr key={`${edge.txn_id}-${edge.depth}`} className="hover:bg-subtle">
-                    <td className="px-4 py-2 text-amber-700 dark:text-amber-300">Hop {edge.depth}</td>
+                  <tr key={`${edge.txn_id}-${edge.depth}`} className="hover:bg-subtle/60 transition-colors duration-120">
+                    <td className="px-4 py-2 text-muted">Hop {edge.depth}</td>
                     <td className="px-4 py-2 text-accent-strong">{edge.txn_id}</td>
                     <td className="px-4 py-2 text-heading">
                       {edge.from_account_number} → {edge.to_account_number}
@@ -901,11 +901,11 @@ export function NetworkGraphPage() {
 
       {/* Chronological Transaction Timeline */}
       {graphData && graphData.timeline.length > 0 ? (
-        <section className="rounded-[6px] border border-border-subtle bg-card overflow-hidden">
-          <div className="border-b border-border-subtle bg-subtle px-4 py-3 flex items-center justify-between">
+        <section className="rounded-[12px] border border-border-subtle bg-card overflow-hidden">
+          <div className="border-b border-border-subtle bg-subtle/50 px-4 py-3 flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-heading">Chronological Transaction Timeline</h2>
-              <p className="text-xs text-muted">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Chronological transaction timeline</h2>
+              <p className="text-[11px] text-muted">
                 Ordered hop sequence showing inter-hop receive-and-forward latency
               </p>
             </div>
@@ -915,23 +915,23 @@ export function NetworkGraphPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border-subtle bg-highlight text-[11px] font-semibold uppercase tracking-wider text-heading">
+              <thead className="border-b border-border-subtle bg-highlight/40 text-[11px] font-medium uppercase tracking-wider text-muted">
                 <tr>
                   <th className="px-4 py-2.5">Timestamp</th>
                   <th className="px-4 py-2.5 text-right">Δ Prev</th>
                   <th className="px-4 py-2.5">TXN ID</th>
                   <th className="px-4 py-2.5">Source → Destination</th>
-                  <th className="px-4 py-2.5">Channel</th>
+                  <th className="px-4 py-2.5">Rail</th>
                   <th className="px-4 py-2.5 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {graphData.timeline.map((item) => (
-                  <tr key={item.txn_id} className="hover:bg-subtle">
+                  <tr key={item.txn_id} className="hover:bg-subtle/60 transition-colors duration-120">
                     <td className="px-4 py-2.5 font-mono text-heading tabular-nums whitespace-nowrap">
                       {formatTimestamp(item.timestamp)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-amber-700 dark:text-amber-300 tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-right font-mono text-muted tabular-nums whitespace-nowrap">
                       +{item.delta_from_prev_sec}s
                     </td>
                     <td className="px-4 py-2.5 font-mono text-accent-strong whitespace-nowrap">
@@ -945,7 +945,7 @@ export function NetworkGraphPage() {
                     <td className="px-4 py-2.5 font-mono text-body">
                       {item.channel} · Hop {item.hop_depth ?? '—'}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-heading tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-right font-mono font-medium text-heading tabular-nums whitespace-nowrap">
                       {formatInr(item.amount)}
                     </td>
                   </tr>
